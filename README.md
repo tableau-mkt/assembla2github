@@ -1,5 +1,7 @@
 # assembla2github
 
+A tool to copy Assembla tickets into GitHub
+
 ## Initial Setup
 - NPM dependencies
   - `npm install`
