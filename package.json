@@ -17,7 +17,7 @@
     "lodash": "^3.8.0",
     "mongodb": "^2.0.33",
     "redis": "^0.12.1",
-    "restler": "^3.2.2"
+    "restling": "^0.9.1"
   },
   "engines": {
     "node": "0.12.x",

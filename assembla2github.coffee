@@ -5,7 +5,7 @@ A migration utility for fetching Assembla tickets and creating GitHub issues.
 
 require('dotenv').load()
 _ = require('lodash')
-rest = require('restler')
+rest = require('restling')
 util = require('util')
 Promise = require('bluebird')
 MongoDB = require('mongodb')
@@ -60,28 +60,22 @@ Fetch a page of tickets from Assembla.
 @param {Number} page  the page to fetch (0 index)
 ###
 fetchTickets = (page) ->
-  return new Promise (resolve, reject) ->
-    console.log('fetching assembla tickets page', page)
+  console.log('fetching assembla tickets page', page)
 
-    headers =
-      'X-Api-Key': assemblaConfig.key
-      'X-Api-Secret': assemblaConfig.secret
-    query =
-      report: '0'
-      per_page: '100'
-      page: page || 0
-      sort_by: 'number'
-      sort_order: 'desc'
-    options =
-      query: query
-      headers: headers
+  headers =
+    'X-Api-Key': assemblaConfig.key
+    'X-Api-Secret': assemblaConfig.secret
+  query =
+    report: '0'
+    per_page: '100'
+    page: page || 0
+    sort_by: 'number'
+    sort_order: 'desc'
+  options =
+    query: query
+    headers: headers
 
-    rest
-      .get("#{assemblaConfig.api}/v1/spaces/#{assemblaConfig.space}/tickets.json", options)
-      .on 'timeout', (error) -> reject(new Error('request timed out'))
-      .on 'fail', (data, response) -> reject(new Error(response.statusCode + ' request failed'))
-      .on 'error', (error, response) -> reject(new Error(response.statusCode + ' request failed'))
-      .on 'success', (data, response) -> resolve([data, response])
+  return rest.get("#{assemblaConfig.api}/v1/spaces/#{assemblaConfig.space}/tickets.json", options)
 
 # Connect to mongodb (bluebird promises)
 MongoDB.MongoClient.connectAsync(url)
@@ -99,10 +93,10 @@ MongoDB.MongoClient.connectAsync(url)
       -> hasData,
       ->
         fetchTickets(page)
-          .spread (data, response) ->
-            if _.isArray(data)
+          .then (result) ->
+            if _.isArray(result.data)
               page++
-              return tickets.insertAsync(data)
+              return tickets.insertAsync(result.data)
             else
               # Assembla returns an empty response when the page doesn't exist.
               hasData = false
@@ -111,6 +105,7 @@ MongoDB.MongoClient.connectAsync(url)
           # Swallow mongodb duplicate key error.
           .catch MongoDB.MongoError, (e) ->
             throw e if e.message.indexOf('duplicate key') is -1
+          .error (e) -> console.log(e)
           # Short delay between API calls.
           .delay(assemblaConfig.delay)
     )
