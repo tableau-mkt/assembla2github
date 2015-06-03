@@ -54,7 +54,7 @@ Fetch a page of tickets from Assembla.
 
 @example Basic usage
   fetchTickets(0)
-    .spread((data, response) -> console.log(data))
+    .then((result) -> console.log(result))
     .error(-> console.log('fail'))
 
 @param {Number} page  the page to fetch (0 index)
