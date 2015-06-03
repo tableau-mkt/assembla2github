@@ -1,0 +1,26 @@
+{
+  "name": "assembla2github",
+  "version": "0.1.0-dev",
+  "private": true,
+  "author": "Joel Walters",
+  "keywords": [],
+  "description": "A tool to copy Assembla tickets into GitHub",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:jtwalters/assembla2github.git"
+  },
+  "dependencies": {
+    "bluebird": "^2.9.27",
+    "coffee-script": "^1.9.3",
+    "dotenv": "^1.1.0",
+    "lodash": "^3.8.0",
+    "mongodb": "^2.0.33",
+    "redis": "^0.12.1",
+    "restler": "^3.2.2"
+  },
+  "engines": {
+    "node": "0.12.x",
+    "npm": "~2.6.x"
+  }
+}
