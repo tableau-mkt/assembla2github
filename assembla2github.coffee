@@ -11,21 +11,26 @@ util = require('util')
 Promise = require('bluebird')
 MongoDB = require('mongodb')
 GitHubApi = require('github')
-argv = require('yargs')
+yargs = require('yargs')
+
+# Set up yargs option parsing
+yargs
   .usage('Usage: $0 <command> [options]')
   .command('import', 'import from assembla')
   .command('export', 'export to github')
-  .check (argv) ->
-    unless argv.import or argv.export
-      throw new Error('import or export command required')
+  .demand(1)
   .example('$0 import -f dump.js')
   .example('$0 export')
   .alias('f', 'file')
   .nargs('f', 1)
-  .describe('f', 'assembla export file (default: dump.js)')
+  .default('file', 'dump.js')
+  .describe('f', 'assembla export file')
   .help('h')
   .alias('h', 'help')
-  .argv
+
+# Getting argv property triggers parsing, so we ensure it comes after calling yargs methods.
+argv = yargs.argv
+command = argv._[0]
 
 # Promisify some node-callback APIs using bluebird
 # @note Use `Async` suffixed methods, e.g. insertAsync, for promises.
@@ -50,7 +55,7 @@ importDumpFile = ->
     fs = require('fs')
     byline = require('byline')
     eof = false
-    stream = byline(fs.createReadStream(argv.f || 'dump.js', encoding: 'utf8'))
+    stream = byline(fs.createReadStream(argv.file, encoding: 'utf8'))
     stream.on 'data', (line) ->
       matches = line.match(/^([\w]+)(:fields)?, (.+)$/)
       if matches
@@ -87,9 +92,9 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     # Create a unique, sparse index on the number column, if it doesn't exist.
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
 
-if argv.import
+if command is 'import'
   promise = promise.then(importDumpFile).then(-> console.log('done importing from assembla'))
-else if argv.export
+else if command is 'export'
   promise = promise.then(exportToGithub).then(-> console.log('done exporting to github'))
 
 promise.done ->
