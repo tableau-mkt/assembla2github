@@ -1,0 +1,98 @@
+---
+url: https://docs.google.com/spreadsheets/d/1xOO07D4XZFb548a_OFARWRVE6nGBFDEfay08_6LO04g/edit#gid=583714957
+
+status:
+  'New':                   ''
+  'Prioritized / Triaged': stat-triaged
+  'Accepted and Working':  stat-inProgress
+  'Please Test!':          stat-test
+  'Work Completed':        stat-done
+  'Nevermind - Invalid':   stat-invalid
+  'Fixed for Real':        stat-fixed, stat-triaged
+
+priority:
+  Lowest:  pri-wishlist
+  Low:     pri-schmeh
+  Normal:  pri-normal
+  High:    pri-next
+  Highest: pri-NOW
+
+component:
+  "Doesn't Work (bug)":           task-bug
+  'Looks Wrong (design/content)': task-bug, skill-front, skill-admin
+  'Maintenance (backend)':        task-maintenance, skill-back, skill-ops
+  'New Feature!':                 task-feature
+  'Research':                     task-research
+
+estimate:
+  1: loe-easy
+  3: loe-medium
+  5: loe-large
+
+audience:
+  'Leads':              ''
+  'Customers':          ''
+  'Tab Execs':          cust-execs
+  'Tab Biz-Sys':        cust-ops
+  'Tab Dev':            cust-dev
+  'Mkt Events Team':    cust-mktg-events
+  'Mkt Prod Marketers': cust-mktg-product
+  'Mkt Localization':   cust-mktg-ops
+  'Mkt General':        cust-mktg-TEMP
+  'Mkt Design':         cust-mktg-design
+  'Mkt Dev':            cust-mktg-ops
+  'Mkt Josh':           cust-mktg-ops, pri-wishlist
+  'MULTIPLE':           ''
+
+focus:
+  'Products Section':           cust-mktg-product
+  'Solutions':                  cust-mktg-product, tag-stories
+  'Learning Content':           ''
+  'About Section':              cust-mktg-comm
+  'Partners':                   cust-mktg-partners
+  'List Views & Galleries':     skill-admin
+  'Forms/Regstration & Eloqua': tag-regForm
+  'Landing Pages':              tag-landing
+  'Tableau Public':             ''
+  'Search':                     tag-search
+  'Conference & Launch':        tag-launch
+  'User Accounts':              skill-back
+  'Forums & Support':           cust-ops
+  'Global Theme & Mobile':      skill-front
+  'Internationalization':       cust-mktg-ops, tag-localize
+  'Site Editing & Admin':       skill-admin, cust-mktg-TEMP, tag-internal
+  'Dev & Performance':          task-maintenance
+  'In-Product Dev':             cust-dev
+  'Careers or Mission':         ''
+  'Misc Other':                 ''
+
+tags:
+  '9.0':        tag-launch
+  'domain':     cust-ops
+  'Drupal.org': cust-openSource
+  'Lead Gen':   cust-mktg-leadGen
+  'Pantheon':   ''
+  'Partners':   cust-mktg-partners
+  'Redesign':   tag-redesign
+
+milestones:
+  'Wishlist':          pri-wishlist
+  'Waiting List':      stat-waiting
+  'Patient Ward':      stat-triaged
+  'Community Service': cust-openSource
+
+browser:
+  IE10:     tag-IE
+  IE9:      tag-IE
+  IE8:      tag-IE
+  IE7:      tag-IE
+  IE6:      tag-IE
+  Firefox:  ''
+  Chrome:   ''
+  Safari:   ''
+  iPad:     tag-mobile
+  Mobile:   tag-mobile
+
+planLevel:
+  Story:    tag-project
+  Epic:     tag-project
