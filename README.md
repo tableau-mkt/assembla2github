@@ -12,4 +12,4 @@ A tool to copy Assembla tickets into GitHub
 
 ## Usage
 - Create a .env config file (see .env-sample)
-- `coffee assembla2github.coffee`
+- `coffee assembla2github.coffee -f path/to/dump.js`
