@@ -74,9 +74,9 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
 
 if argv.i or argv.import
-  promise.then(importDumpFile).then(-> console.log('done importing from assembla'))
+  promise = promise.then(importDumpFile).then(-> console.log('done importing from assembla'))
 else if argv.x or argv.export
-  promise.then(exportToGithub).then(-> console.log('done exporting to github'))
+  promise = promise.then(exportToGithub).then(-> console.log('done exporting to github'))
 else
   console.log """
 usage: assembla2github.coffee [-i path/to/dump.js] [-x]
