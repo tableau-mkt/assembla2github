@@ -14,6 +14,7 @@
     "bluebird": "^2.9.27",
     "coffee-script": "^1.9.3",
     "dotenv": "^1.1.0",
+    "github": "^0.2.4",
     "js-yaml": "^3.3.1",
     "lodash": "^3.8.0",
     "mongodb": "^2.0.33",
