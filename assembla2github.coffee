@@ -23,9 +23,6 @@ fieldsMeta = {}
 
 ###
 Import data from Assembla's dump.js file into MongoDB.
-
-@example Basic usage
-  import()
 ###
 importDumpFile = ->
   console.log('importing assembla data from dump.js')
