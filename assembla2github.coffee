@@ -11,7 +11,21 @@ util = require('util')
 Promise = require('bluebird')
 MongoDB = require('mongodb')
 GitHubApi = require('github')
-argv = require('yargs').argv
+argv = require('yargs')
+  .usage('Usage: $0 <command> [options]')
+  .command('import', 'import from assembla')
+  .command('export', 'export to github')
+  .check (argv) ->
+    unless argv.import or argv.export
+      throw new Error('import or export command required')
+  .example('$0 import -f dump.js')
+  .example('$0 export')
+  .alias('f', 'file')
+  .nargs('f', 1)
+  .describe('f', 'assembla export file (default: dump.js)')
+  .help('h')
+  .alias('h', 'help')
+  .argv
 
 # Promisify some node-callback APIs using bluebird
 # @note Use `Async` suffixed methods, e.g. insertAsync, for promises.
@@ -36,7 +50,7 @@ importDumpFile = ->
     fs = require('fs')
     byline = require('byline')
     eof = false
-    stream = byline(fs.createReadStream(argv.i || 'dump.js', encoding: 'utf8'))
+    stream = byline(fs.createReadStream(argv.f || 'dump.js', encoding: 'utf8'))
     stream.on 'data', (line) ->
       matches = line.match(/^([\w]+)(:fields)?, (.+)$/)
       if matches
@@ -73,20 +87,10 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     # Create a unique, sparse index on the number column, if it doesn't exist.
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
 
-if argv.i or argv.import
+if argv.import
   promise = promise.then(importDumpFile).then(-> console.log('done importing from assembla'))
-else if argv.x or argv.export
+else if argv.export
   promise = promise.then(exportToGithub).then(-> console.log('done exporting to github'))
-else
-  console.log """
-usage: assembla2github.coffee [-i path/to/dump.js] [-x]
-
-options:
-  -i (--import)
-    import given file (assembla export format)
-  -x (--export)
-    export data to github
-"""
 
 promise.done ->
   console.log('exiting')
