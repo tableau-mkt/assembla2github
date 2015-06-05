@@ -21,6 +21,7 @@ yargs
       .describe('file', 'assembla export file')
       .demand('file')
       .alias('f', 'file')
+      .help('h').alias('h', 'help')
       .argv
   )
   .command('export', 'export to github', (yargs) ->
@@ -35,13 +36,12 @@ yargs
         throw new Error('GitHub token required') unless argv['github-token']
         true
       )
-      .argv
+      .help('h').alias('h', 'help')
   )
   .demand(1)
   .example('$0 import -f dump.js')
   .example('$0 export -r user/repo')
-  .help('h')
-  .alias('h', 'help')
+  .help('h').alias('h', 'help')
 
 # Getting argv property triggers parsing, so we ensure it comes after calling
 # yargs methods.
