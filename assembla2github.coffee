@@ -15,15 +15,14 @@ yargs = require('yargs')
 yargs
   .usage('Usage: $0 <command> [options]')
   .command('import', 'import from assembla', (yargs) ->
-    argv = yargs
+    yargs
       .describe('file', 'assembla export file')
       .demand('file')
       .alias('f', 'file')
       .help('h').alias('h', 'help')
-      .argv
   )
   .command('export', 'export to github', (yargs) ->
-    argv = yargs
+    yargs
       .describe('repo', 'GitHub repo (user/repo)')
       .demand('repo')
       .alias('r', 'repo')
@@ -41,7 +40,6 @@ yargs
         true
       )
       .help('h').alias('h', 'help')
-      .argv
   )
   .demand(1)
   .example('$0 import -f dump.js')
@@ -51,6 +49,7 @@ yargs
 # Getting argv property triggers parsing, so we ensure it comes after calling
 # yargs methods.
 argv = yargs.argv
+console.log(argv)
 command = argv._[0]
 
 # Promisify some node-callback APIs using bluebird
