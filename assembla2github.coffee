@@ -7,10 +7,8 @@ A migration utility for fetching Assembla tickets and creating GitHub issues.
 
 require('dotenv').load()
 _ = require('lodash')
-util = require('util')
 Promise = require('bluebird')
 MongoDB = require('mongodb')
-GitHubApi = require('github')
 yargs = require('yargs')
 
 # Set up yargs option parsing
@@ -32,8 +30,12 @@ yargs
       .describe('github-token', 'GitHub API access token')
       .alias('t', 'github-token')
       .check((argv) ->
-        argv.repo = argv.repo.split('/')
-        throw new Error('Check GitHub repo value') unless argv.repo.length is 2
+        repoParts = argv.repo.split('/')
+        throw new Error('Check GitHub repo value') unless repoParts.length is 2
+        argv.repo =
+          path: argv.repo
+          owner: repoParts[0]
+          repo: repoParts[1]
         argv['github-token'] ?= process.env.GITHUB_TOKEN
         throw new Error('GitHub token required') unless argv['github-token']
         true
@@ -52,7 +54,6 @@ command = argv._[0]
 
 # Promisify some node-callback APIs using bluebird
 # @note Use `Async` suffixed methods, e.g. insertAsync, for promises.
-GitHubApi = Promise.promisifyAll(GitHubApi)
 MongoDB = Promise.promisifyAll(MongoDB)
 MongoClient = Promise.promisifyAll(MongoDB.MongoClient)
 
@@ -97,7 +98,10 @@ importDumpFile = ->
 Export data to GitHub
 ###
 exportToGithub = ->
-  console.log('exporting to github', argv.repo.join('/'))
+  console.log('exporting to github', argv.repo.path)
+  octonode = Promise.promisifyAll(require('octonode'))
+  github = octonode.client(argv['github-token'])
+  repo = github.repo(argv.repo.path)
   console.log('TODO')
 
 # Connect to mongodb (bluebird promises)
