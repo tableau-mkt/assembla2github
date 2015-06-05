@@ -16,19 +16,35 @@ yargs = require('yargs')
 # Set up yargs option parsing
 yargs
   .usage('Usage: $0 <command> [options]')
-  .command('import', 'import from assembla')
-  .command('export', 'export to github')
+  .command('import', 'import from assembla', (yargs) ->
+    argv = yargs
+      .describe('file', 'assembla export file')
+      .demand('file')
+      .alias('f', 'file')
+      .argv
+  )
+  .command('export', 'export to github', (yargs) ->
+    argv = yargs
+      .describe('repo', 'GitHub repo (user/repo)')
+      .demand('repo')
+      .alias('r', 'repo')
+      .describe('github-token', 'GitHub API access token')
+      .alias('t', 'github-token')
+      .check((argv) ->
+        argv['github-token'] ?= process.env.GITHUB_TOKEN
+        throw new Error('GitHub token required') unless argv['github-token']
+        true
+      )
+      .argv
+  )
   .demand(1)
   .example('$0 import -f dump.js')
-  .example('$0 export')
-  .alias('f', 'file')
-  .nargs('f', 1)
-  .default('file', 'dump.js')
-  .describe('f', 'assembla export file')
+  .example('$0 export -r user/repo')
   .help('h')
   .alias('h', 'help')
 
-# Getting argv property triggers parsing, so we ensure it comes after calling yargs methods.
+# Getting argv property triggers parsing, so we ensure it comes after calling
+# yargs methods.
 argv = yargs.argv
 command = argv._[0]
 
@@ -37,8 +53,6 @@ command = argv._[0]
 GitHubApi = Promise.promisifyAll(GitHubApi)
 MongoDB = Promise.promisifyAll(MongoDB)
 MongoClient = Promise.promisifyAll(MongoDB.MongoClient)
-
-# Check for required ENV
 
 mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/assembla2github'
 
