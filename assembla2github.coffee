@@ -96,6 +96,12 @@ importDumpFile = ->
 
 ###
 Export data to GitHub
+
+@example Fetch file contents
+  repo.contentsAsync('composer.json')
+    .spread (file, headers) ->
+      contents = new Buffer(file.content, file.encoding).toString('utf8')
+      console.log(contents)
 ###
 exportToGithub = ->
   console.log('exporting to github', argv.repo.path)
