@@ -32,6 +32,8 @@ yargs
       .describe('github-token', 'GitHub API access token')
       .alias('t', 'github-token')
       .check((argv) ->
+        argv.repo = argv.repo.split('/')
+        throw new Error('Check GitHub repo value') unless argv.repo.length is 2
         argv['github-token'] ?= process.env.GITHUB_TOKEN
         throw new Error('GitHub token required') unless argv['github-token']
         true
@@ -95,7 +97,8 @@ importDumpFile = ->
 Export data to GitHub
 ###
 exportToGithub = ->
-  console.log('exporting to github')
+  console.log('exporting to github', argv.repo.join('/'))
+  console.log('TODO')
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
