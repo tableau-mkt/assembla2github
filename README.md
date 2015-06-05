@@ -1,6 +1,9 @@
 # assembla2github
 
-A tool to copy Assembla tickets into GitHub
+A tool to copy Assembla tickets into GitHub.
+
+## Under Development
+This tool is under active development and not yet ready for use.
 
 ## Initial Setup
 - NPM dependencies
