@@ -41,6 +41,7 @@ yargs
         true
       )
       .help('h').alias('h', 'help')
+      .argv
   )
   .demand(1)
   .example('$0 import -f dump.js')
