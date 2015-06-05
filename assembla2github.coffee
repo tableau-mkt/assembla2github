@@ -49,7 +49,6 @@ yargs
 # Getting argv property triggers parsing, so we ensure it comes after calling
 # yargs methods.
 argv = yargs.argv
-console.log(argv)
 command = argv._[0]
 
 # Promisify some node-callback APIs using bluebird
