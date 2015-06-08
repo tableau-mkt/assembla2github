@@ -1,6 +1,6 @@
 Promise = require('bluebird')
 fs = Promise.promisifyAll(require('fs'))
-yaml = Promise.promisifyAll(require('js-yaml'))
+yaml = require('js-yaml')
 
 fs.readFileAsync(__dirname + '/mapper.yaml')
   .then(yaml.safeLoad)
