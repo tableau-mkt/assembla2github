@@ -26,6 +26,9 @@ yargs
       .describe('repo', 'GitHub repo (user/repo)')
       .demand('repo')
       .alias('r', 'repo')
+      .describe('delay', 'GitHub API call delay (in ms)')
+      .alias('d', 'delay')
+      .default('delay', 1000)
       .describe('github-token', 'GitHub API access token')
       .alias('t', 'github-token')
       .check((argv) ->
@@ -118,7 +121,7 @@ exportToGithub = ->
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo.path)
   tickets = db.collection('tickets')
-  cursor = tickets.find().sort({number: -1}).limit(1)
+  cursor = tickets.find().sort({number: -1}).limit(2)
   cursor.toArrayAsync()
     .then (docs) ->
       for doc in docs
@@ -128,8 +131,10 @@ exportToGithub = ->
           # 'assignee': 'octocat',
           # 'milestone': 1,
           # 'labels': ['Label1', 'Label2']
-        ).spread (body, headers) ->
+        )
+        .spread (body, headers) ->
           console.log('created issue', body)
+        .delay(argv.delay)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
