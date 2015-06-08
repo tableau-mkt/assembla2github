@@ -18,7 +18,6 @@
     "lodash": "^3.8.0",
     "mongodb": "^2.0.33",
     "octonode": "^0.6.17",
-    "restling": "^0.9.1",
     "yargs": "^3.10.0"
   },
   "engines": {
