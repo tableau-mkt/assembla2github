@@ -8,9 +8,11 @@ fs.readFileAsync(__dirname + '/mapper.yaml')
     console.log('mapper loaded', doc)
   )
 
-module.exports =
-  ###
-  Return an array of labels given a ticket
-  ###
-  labels: (ticket) ->
-    ['foo', 'bar']
+###
+Return a transformed ticket.
+
+@note You can add a labels property as an array of strings.
+###
+module.exports = (ticket) ->
+  ticket.labels = ['foo', 'bar']
+  ticket

@@ -136,8 +136,8 @@ exportToGithub = ->
   cursor.toArrayAsync()
     .then (docs) ->
       for doc in docs
+        transform(doc) if _.isFunction(transform)
         if argv.dryRun
-          _.extend(doc, {labels: transform.labels(doc)}) if transform
           console.log('#%s %s [%s]', doc.number, doc.summary, (doc.labels || []).join(', '))
         else
           repo.issueAsync(
@@ -145,7 +145,7 @@ exportToGithub = ->
             'body': doc.description,
             # 'assignee': 'octocat',
             # 'milestone': 1,
-            # 'labels': ['Label1', 'Label2']
+            'labels': doc.labels || []
           )
           .spread (body, headers) ->
             console.log('created issue', body)
