@@ -1,18 +1,22 @@
-Promise = require('bluebird')
-fs = Promise.promisifyAll(require('fs'))
+fs = require('fs')
 yaml = require('js-yaml')
+mapper = null
 
-fs.readFileAsync(__dirname + '/mapper.yaml')
-  .then(yaml.safeLoad)
-  .then((doc) ->
-    console.log('mapper loaded', doc)
-  )
+try
+  doc = yaml.safeLoad(fs.readFileSync(__dirname + '/mapper.yaml', 'utf8'))
+  console.log('mapper loaded', doc)
+  mapper = doc
+catch e
+  console.log(e)
 
 ###
-Return a transformed ticket.
+Transform the data object before exporting to GitHub.
+
+@param [Object] data to export
+@return [Object] transformed data
 
 @note You can add a labels property as an array of strings.
 ###
-module.exports = (ticket) ->
-  ticket.labels = ['foo', 'bar']
-  ticket
+module.exports = (data) ->
+  data.labels = ['foo', 'bar']
+  return data
