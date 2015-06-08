@@ -10,6 +10,7 @@ _ = require('lodash')
 Promise = require('bluebird')
 MongoDB = require('mongodb')
 yargs = require('yargs')
+require('coffee-script/register')
 
 # Set up yargs option parsing
 yargs
@@ -26,6 +27,9 @@ yargs
       .describe('repo', 'GitHub repo (user/repo)')
       .demand('repo')
       .alias('r', 'repo')
+      .describe('transform', 'Transform plugin (see readme)')
+      .alias('T', 'transform')
+      .describe('dry-run', 'Show what issues would have been created')
       .describe('delay', 'GitHub API call delay (in ms)')
       .alias('d', 'delay')
       .default('delay', 1000)
@@ -47,12 +51,16 @@ yargs
   .demand(1)
   .example('$0 import -f dump.js')
   .example('$0 export -r user/repo')
+  .describe('verbose', 'Verbose mode')
+  .alias('v', 'verbose')
+  .count('verbose')
   .help('h').alias('h', 'help')
 
 # Getting argv property triggers parsing, so we ensure it comes after calling
 # yargs methods.
 argv = yargs.argv
 command = argv._[0]
+console.log(argv) #if argv.verbose
 
 # Promisify some node-callback APIs using bluebird
 # @note Use `Async` suffixed methods, e.g. insertAsync, for promises.
@@ -65,6 +73,9 @@ mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/assembla2github'
 db = null
 collections = {}
 fieldsMeta = {}
+
+# Require transform plugin if needed
+transform = require(argv.transform) if argv.transform
 
 ###
 Import data from Assembla's dump.js file into MongoDB.
@@ -125,16 +136,20 @@ exportToGithub = ->
   cursor.toArrayAsync()
     .then (docs) ->
       for doc in docs
-        repo.issueAsync(
-          'title': doc.summary,
-          'body': doc.description,
-          # 'assignee': 'octocat',
-          # 'milestone': 1,
-          # 'labels': ['Label1', 'Label2']
-        )
-        .spread (body, headers) ->
-          console.log('created issue', body)
-        .delay(argv.delay)
+        if argv.dryRun
+          _.extend(doc, {labels: transform.labels(doc)}) if transform
+          console.log('#%s %s [%s]', doc.number, doc.summary, (doc.labels || []).join(', '))
+        else
+          repo.issueAsync(
+            'title': doc.summary,
+            'body': doc.description,
+            # 'assignee': 'octocat',
+            # 'milestone': 1,
+            # 'labels': ['Label1', 'Label2']
+          )
+          .spread (body, headers) ->
+            console.log('created issue', body)
+          .delay(argv.delay)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
