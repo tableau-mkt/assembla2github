@@ -136,7 +136,10 @@ exportToGithub = ->
   cursor.toArrayAsync()
     .then (docs) ->
       for doc in docs
-        transform(doc) if _.isFunction(transform)
+        doc = transform(doc) if _.isFunction(transform)
+        unless _.isObject(doc)
+          console.log('skipping, no data object')
+          continue
         if argv.dryRun
           console.log('#%s %s [%s]', doc.number, doc.summary, (doc.labels || []).join(', '))
         else
