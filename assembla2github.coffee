@@ -55,6 +55,7 @@ command = argv._[0]
 # @note Use `Async` suffixed methods, e.g. insertAsync, for promises.
 MongoDB = Promise.promisifyAll(MongoDB)
 MongoClient = Promise.promisifyAll(MongoDB.MongoClient)
+Promise.promisifyAll(MongoDB.Cursor.prototype)
 
 mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/assembla2github'
 
@@ -101,13 +102,34 @@ Export data to GitHub
     .spread (file, headers) ->
       contents = new Buffer(file.content, file.encoding).toString('utf8')
       console.log(contents)
+
+@example Create an issue
+  repo.issue({
+    'title': 'Found a bug',
+    'body': 'I\'m having a problem with this.',
+    'assignee': 'octocat',
+    'milestone': 1,
+    'labels': ['Label1', 'Label2']
+  })
 ###
 exportToGithub = ->
   console.log('exporting to github', argv.repo.path)
   octonode = Promise.promisifyAll(require('octonode'))
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo.path)
-  console.log('TODO')
+  tickets = db.collection('tickets')
+  cursor = tickets.find().sort({number: -1}).limit(1)
+  cursor.toArrayAsync()
+    .then (docs) ->
+      for doc in docs
+        repo.issueAsync(
+          'title': doc.summary,
+          'body': doc.description,
+          # 'assignee': 'octocat',
+          # 'milestone': 1,
+          # 'labels': ['Label1', 'Label2']
+        ).spread (body, headers) ->
+          console.log('created issue', body)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
