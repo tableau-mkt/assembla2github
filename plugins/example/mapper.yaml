@@ -25,9 +25,9 @@ component:
   'Research':                     [task-research]
 
 estimate:
-  Easy: loe-easy
-  Medium: loe-medium
-  Large: loe-large
+  Easy: est-easy
+  Medium: est-medium
+  Large: est-large
 
 audience:
   'Leads':              []
