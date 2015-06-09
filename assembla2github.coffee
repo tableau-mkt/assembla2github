@@ -201,11 +201,10 @@ exportToGithub = ->
         #console.log('#%s %s [%s]', ticket.number, ticket.summary, (ticket.labels || []).join(', '))
       else
         repo.issueAsync(
-          'title': ticket.summary,
-          'body': ticket.description,
-        # 'assignee': 'octocat',
-        # 'milestone': 1,
-          'labels': ticket.labels || []
+          title: ticket.title,
+          body: ticket.body,
+          assignee: ticket.assignee,
+          labels: ticket.labels || []
         )
         .spread (body, headers) ->
           console.log('created issue', body)

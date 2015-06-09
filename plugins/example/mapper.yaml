@@ -2,7 +2,7 @@
 url: https://docs.google.com/spreadsheets/d/1xOO07D4XZFb548a_OFARWRVE6nGBFDEfay08_6LO04g/edit#gid=583714957
 
 status:
-  'New':                   false
+  'New':                   []
   'Prioritized / Triaged': [stat-triaged]
   'Accepted and Working':  [stat-inProgress]
   'Please Test!':          [stat-test]
@@ -25,9 +25,9 @@ component:
   'Research':                     [task-research]
 
 estimate:
-  1: loe-easy
-  3: loe-medium
-  5: loe-large
+  Easy: loe-easy
+  Medium: loe-medium
+  Large: loe-large
 
 audience:
   'Leads':              []
@@ -93,6 +93,6 @@ browser:
   iPad:     [tag-mobile]
   Mobile:   [tag-mobile]
 
-planLevel:
+plan_level:
   Story:    [tag-project]
   Epic:     [tag-project]
