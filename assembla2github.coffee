@@ -27,6 +27,8 @@ yargs
       .describe('repo', 'GitHub repo (user/repo)')
       .demand('repo')
       .alias('r', 'repo')
+      .alias('s', 'status')
+      .describe('status', 'Which tickets to include (0 = closed; 1 = open; 2 = all). Defaults to open (1)')
       .describe('transform', 'Transform plugin (see readme)')
       .alias('T', 'transform')
       .describe('dry-run', 'Show what issues would have been created')
@@ -109,17 +111,57 @@ importDumpFile = ->
     stream.on 'end', -> eof = true
 
 ###
-Join some values from related collections and augments the data object.
+Get all Assembla tickets w/ a given status
 
-@param [Object] data object
-@return [Promise] promise to be fulfilled with augmented data object
+@param [Integer] status
+@return [Array] tickets
 ###
-joinValues = (data) ->
+getTickets = (status = 0) ->
+  # Only retrieve tickets with a certain status
+  if status == 0 or status == 1
+    console.log(status)
+    tickets = db.collection('tickets').find({'state': status}).sort({number: -1}).toArrayAsync()
+  else
+    tickets = db.collection('tickets').find().sort({number: -1}).toArrayAsync()
+
+  return tickets
+
+###
+Join some values from related collections and augments the ticket object.
+
+@param [Object] ticket object
+@return [Promise] promise to be fulfilled with augmented ticket object
+###
+joinValues = (ticket) ->
+  # Append Associations
+  # Relationship 0 =
+  # Relationship 1 =
+  # Relationship 2 =
+  # associations =
+
+  # Append Milestones
+  # TODO skim milestone object to only include necessary properties
+  milestone = db.collection('milestones').find({'id': ticket.milestone_id}).toArrayAsync()
+
+  # Append Statuses
+  status = db.collection('ticket_statuses').find({'id': ticket.ticket_status_id}, {'name' : 1, '_id': 0}).toArrayAsync()
+
+  # Append Tags
+  tags = db.collection('ticket_tags').find({'ticket_id': ticket.id}, {'tag_name_id' : 1, '_id' : 0}).toArrayAsync()
+  .then (tagIds) ->
+    if tagIds.length > 0
+      return db.collection('tag_names').find({'id': [$in: tagIds]}, {'name' : 1, '_id' : 0}).toArrayAsync()
+
   return Promise.props(
-    foo: new Promise (resolve, reject) -> setTimeout(resolve, 3000)
+    milestone: milestone,
+    status: status,
+    tags: tags,
+    #foo: new Promise (resolve, reject) -> setTimeout(resolve, 1000)
   ).then((results) ->
-    data.foo = results.foo || false;
-    return data
+    ticket.milestone = results.milestone || false
+    ticket.status = results.status || false
+    ticket.tags = results.tags || false
+    return ticket
   )
 
 ###
@@ -145,29 +187,29 @@ exportToGithub = ->
   octonode = Promise.promisifyAll(require('octonode'))
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo.path)
-  tickets = db.collection('tickets')
-  cursor = tickets.find().sort({number: -1}).limit(2)
-  cursor.toArrayAsync()
-    .then(joinValues)
-    .then (docs) ->
-      for doc in docs
-        doc = transform(doc) if _.isFunction(transform)
-        unless _.isObject(doc)
-          console.log('skipping, no data object')
-          continue
-        if argv.dryRun
-          console.log('#%s %s [%s]', doc.number, doc.summary, (doc.labels || []).join(', '))
-        else
-          repo.issueAsync(
-            'title': doc.summary,
-            'body': doc.description,
-            # 'assignee': 'octocat',
-            # 'milestone': 1,
-            'labels': doc.labels || []
-          )
-          .spread (body, headers) ->
-            console.log('created issue', body)
-          .delay(argv.delay)
+  getTickets(argv['status'])
+  .each (ticket) ->
+    # Append extra information to the ticket object.
+    joinValues(ticket)
+    .then (ticket) ->
+      ticket = transform(ticket) if _.isFunction(transform)
+      unless _.isObject(ticket)
+        console.log('skipping, no data object')
+        return
+      if argv.dryRun
+        console.log(ticket)
+        #console.log('#%s %s [%s]', ticket.number, ticket.summary, (ticket.labels || []).join(', '))
+      else
+        repo.issueAsync(
+          'title': ticket.summary,
+          'body': ticket.description,
+        # 'assignee': 'octocat',
+        # 'milestone': 1,
+          'labels': ticket.labels || []
+        )
+        .spread (body, headers) ->
+          console.log('created issue', body)
+        .delay(argv.delay)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
