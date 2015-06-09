@@ -109,6 +109,20 @@ importDumpFile = ->
     stream.on 'end', -> eof = true
 
 ###
+Join some values from related collections and augments the data object.
+
+@param [Object] data object
+@return [Promise] promise to be fulfilled with augmented data object
+###
+joinValues = (data) ->
+  return Promise.props(
+    foo: new Promise (resolve, reject) -> setTimeout(resolve, 3000)
+  ).then((results) ->
+    data.foo = results.foo || false;
+    return data
+  )
+
+###
 Export data to GitHub
 
 @example Fetch file contents
@@ -134,6 +148,7 @@ exportToGithub = ->
   tickets = db.collection('tickets')
   cursor = tickets.find().sort({number: -1}).limit(2)
   cursor.toArrayAsync()
+    .then(joinValues)
     .then (docs) ->
       for doc in docs
         doc = transform(doc) if _.isFunction(transform)
