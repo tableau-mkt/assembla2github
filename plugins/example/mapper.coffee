@@ -49,6 +49,7 @@ Transform the data object before exporting to GitHub.
   }
 ###
 module.exports = (data) ->
+  baseUrl = 'https://www.assembla.com/spaces/upgrade/tickets'
   # Map values into an array of labels.
   data.labels = []
   _.each([
@@ -69,4 +70,14 @@ module.exports = (data) ->
         data.labels = data.labels.concat(mapper[key][labelKey] || [])
       )
   )
+
+  # Append related ticket info to body.
+  if _.any(data.related_tickets, (related) -> related.length)
+    data.body += '\n\n## Related Tickets\n'
+    _.each(data.related_tickets, (tickets, key) ->
+      data.body += "### #{key}\n" if tickets.length
+      _.each(tickets, (ticket) ->
+        data.body += "- [#{ticket.title}](#{baseUrl}/#{ticket.number}) (#{ticket.number})"
+      )
+    )
   return data
