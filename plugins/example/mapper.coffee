@@ -1,12 +1,14 @@
 fs = require('fs')
 yaml = require('js-yaml')
 mapper = null
+secret = null
 _ = require('lodash')
 
 try
-  doc = yaml.safeLoad(fs.readFileSync(__dirname + '/mapper.yaml', 'utf8'))
-  console.log('mapper loaded', doc)
-  mapper = doc
+  mapper = yaml.safeLoad(fs.readFileSync(__dirname + '/mapper.yaml', 'utf8'))
+  console.log('mapper loaded', mapper)
+  secret = yaml.safeLoad(fs.readFileSync(__dirname + '/secret.yaml', 'utf8'))
+  console.log('private mapper loaded', secret)
 catch e
   console.log(e)
 
@@ -80,4 +82,12 @@ module.exports = (data) ->
         data.body += "- [#{ticket.title}](#{baseUrl}/#{ticket.number}) (#{ticket.number})"
       )
     )
+
+  # Map user ID to GitHub username.
+  try
+    data.assignee = secret.assembla_users[data.assignee]
+    data.assignee = secret.github_users[data.assignee]
+  catch error
+    delete data.assignee
+
   return data
