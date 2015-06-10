@@ -119,9 +119,12 @@ Get all Assembla tickets w/ a given status
 getTickets = (status = 0) ->
   # Only retrieve tickets with a certain status
   if status == 0 or status == 1
-    tickets = db.collection('tickets').find({'state': status}).sort({number: -1}).toArrayAsync()
+    tickets = db.collection('tickets')
+      .find({'state': status}).sort({number: -1}).toArrayAsync()
   else
-    tickets = db.collection('tickets').find().sort({number: -1}).toArrayAsync()
+    # Retrieve all tickets
+    tickets = db.collection('tickets')
+      .find().sort({number: -1}).toArrayAsync()
 
   return tickets
 
@@ -194,7 +197,7 @@ joinValues = (ticket) ->
     #foo: new Promise (resolve, reject) -> setTimeout(resolve, 1000)
   ).then((results) ->
     ###
-      Issue
+      Example Issue
 
       id: 69995873
       number: 1
@@ -215,6 +218,7 @@ joinValues = (ticket) ->
       focus: 'Search'
       tags: ['tag_1', 'tag_2']
     ###
+
     # Mappers
     estimateMapper = {
       '1': 'None'
@@ -285,7 +289,7 @@ exportToGithub = ->
   repo = github.repo(argv.repo.path)
   getTickets(argv['status'])
   .each (ticket) ->
-    # Append extra information to the ticket object.
+    # Create issue object with relevant ticket information.
     joinValues(ticket)
     .then (issue) ->
       issue = transform(issue) if _.isFunction(transform)
@@ -295,7 +299,6 @@ exportToGithub = ->
       if argv.dryRun
         if issue.relatedTickets.parents
           console.log(issue)
-        #console.log('#%s %s [%s]', ticket.number, ticket.summary, (ticket.labels || []).join(', '))
       else
         repo.issueAsync(
           title: issue.title,
