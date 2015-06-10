@@ -77,9 +77,10 @@ module.exports = (data) ->
   if _.keys(data.relatedTickets).length
     data.body += '\n\n## Related Tickets\n'
     _.each(data.relatedTickets, (tickets, key) ->
-      data.body += "### #{key}\n" if tickets.length
+      key = _.capitalize(key)
+      data.body += "\n### #{key}\n" if _.keys(tickets).length
       _.each(tickets, (ticket) ->
-        data.body += "- [#{ticket.title}](#{baseUrl}/#{ticket.number}) (#{ticket.number})\n"
+        data.body += "- #{ticket.summary} ([GitHub:#{ticket.number}] [Assembla](#{baseUrl}/#{ticket.number}))\n"
       )
     )
 
@@ -89,5 +90,13 @@ module.exports = (data) ->
     data.assignee = secret.github_users[data.assignee]
   catch error
     delete data.assignee
+
+  # Replace some basic textile with markdown equivalent.
+  data.body = data.body.replace(/h1\./g, '#')
+  data.body = data.body.replace(/h2\./g, '##')
+  data.body = data.body.replace(/h3\./g, '###')
+  data.body = data.body.replace(/h4\./g, '####')
+  data.body = data.body.replace(/h5\./g, '#####')
+  data.body = data.body.replace(/h6\./g, '######')
 
   return data
