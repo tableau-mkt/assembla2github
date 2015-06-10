@@ -92,8 +92,8 @@ module.exports = (data) ->
     delete data.assignee
 
   # Replace some basic textile with markdown equivalent.
-  data.body = data.body.replace(/^###/gm, '    1.')
-  data.body = data.body.replace(/^##/gm, '  1.')
+  data.body = data.body.replace(/^###/gm, '    *')
+  data.body = data.body.replace(/^##/gm, '  *')
   data.body = data.body.replace(/^#/gm, '1.')
 
   data.body = data.body.replace(/^\*\*\*/gm, '    *')
