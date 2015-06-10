@@ -88,6 +88,9 @@ module.exports = (data) ->
   data.body = data.body.replace(/h5\./g, '#####')
   data.body = data.body.replace(/h6\./g, '######')
 
+  # Append Assembla link.
+  data.body += "\n\n## [Assembla ##{data.number}](https://www.assembla.com/spaces/upgrade/tickets/#{data.number})\n"
+
   # Append related ticket info to body.
   if _.keys(data.relatedTickets).length
     data.body += '\n\n## Related Tickets\n'
