@@ -119,8 +119,7 @@ Get all Assembla tickets w/ a given status
 getTickets = (status = 0) ->
   # Only retrieve tickets with a certain status
   if status == 0 or status == 1
-    console.log(status)
-    tickets = db.collection('tickets').find({'state': status}).sort({number: -1}).limit(1).toArrayAsync()
+    tickets = db.collection('tickets').find({'state': status}).sort({number: -1}).toArrayAsync()
   else
     tickets = db.collection('tickets').find().sort({number: -1}).toArrayAsync()
 
@@ -134,10 +133,22 @@ Join some values from related collections and augments the ticket object.
 ###
 joinValues = (ticket) ->
   # Append Associations
-  # Relationship 0 =
-  # Relationship 1 =
-  # Relationship 2 =
-  # associations = db.collection('associations
+  relationMapper = {
+    0: 'parents'
+    1: 'children'
+    2: 'related'
+    3: 'duplicates'
+    6: 'subtasks'
+    7: 'before'
+    8: 'after'
+  }
+  tempAssociations = {}
+  associations = db.collection('ticket_associations')
+    .find({'ticket1_id': ticket.id}, {'ticket1_id': 1, 'ticket2_id': 1, 'relationship': 1, '_id': 0}).toArrayAsync()
+    .map (relation) ->
+      tempAssociations[relationMapper[relation.relationship]] = relation.ticket2_id
+    .then () ->
+      return tempAssociations
 
   # Append Milestone
   milestone = db.collection('milestones')
@@ -146,15 +157,15 @@ joinValues = (ticket) ->
       return data[0].title
 
   # Append Custom Fields (e.g. audience, browser, component, deadline, focus)
-  storage = {}
+  tempCustomFields = {}
   custom_fields = db.collection('workflow_property_vals')
     .find({'workflow_instance_id': ticket.id}, {'workflow_property_def_id': 1, 'value': 1, '_id': 0}).toArrayAsync()
     .map (custom_field) ->
       db.collection('workflow_property_defs').find({'id': custom_field.workflow_property_def_id}, {'title': 1, '_id': 0}).toArrayAsync()
         .map (custom_field_label) ->
-          storage[custom_field_label.title] = custom_field.value
+          tempCustomFields[custom_field_label.title] = custom_field.value
     .then () ->
-      return storage
+      return tempCustomFields
 
   # Append Status
   status = db.collection('ticket_statuses')
@@ -175,6 +186,7 @@ joinValues = (ticket) ->
       return results
 
   return Promise.props(
+    associations: associations,
     custom_fields: custom_fields,
     milestone: milestone,
     status: status,
@@ -222,8 +234,6 @@ joinValues = (ticket) ->
       '1': 'Open'
     }
 
-    console.log(ticket)
-
     # Create Issue
     issue = {
       id: ticket.id
@@ -234,16 +244,17 @@ joinValues = (ticket) ->
       state: stateMapper[ticket.state]
       status: results.status || false
       priority: priorityMapper[ticket.priority]
-      assignee: false
+      assignee: ticket.assigned_to_id
       component: results.custom_fields.component || false
       milestone: results.milestone || false
-      plan_level: false
+      plan_level: results.custom_fields.plan_level || false
       estimate: estimateMapper[ticket.estimate]
       audience: results.custom_fields.audience || false
       browser: results.custom_fields.browser || false
       deadline: results.custom_fields.deadline || false
       focus: results.custom_fields.focus || false
       tags: results.tags || []
+      relatedTickets: results.associations
     }
 
     return issue
@@ -282,7 +293,8 @@ exportToGithub = ->
         console.log('skipping, no data object')
         return
       if argv.dryRun
-        console.log(issue)
+        if issue.relatedTickets.parents
+          console.log(issue)
         #console.log('#%s %s [%s]', ticket.number, ticket.summary, (ticket.labels || []).join(', '))
       else
         repo.issueAsync(
