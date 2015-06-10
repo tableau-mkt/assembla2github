@@ -124,7 +124,7 @@ getTickets = (status = 0) ->
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
-      .find({'number': 3256}).sort({number: -1}).toArrayAsync()
+      .find({'number': {$in: [3256,2976,2982,114,1003,1040,2672,3949]}}).sort({number: -1}).toArrayAsync()
 
   return tickets
 
@@ -283,19 +283,41 @@ Join some values from related collections and augments the ticket object.
 @param [Object] ticket object
 @return [Promise] promise to be fulfilled with augmented ticket object
 ###
-updateLinks = () ->
+updateLinks = (github, repo) ->
   db.collection('assembla2github')
-    .find().sort({'github_id': 1}).toArrayAsync()
+    .find().toArrayAsync()
       .each (issue) ->
-        console.log(issue)
-        #Retrieve all Assembla ticket numbers from body and replace with matching Github issue number
-        matches = issue.body.match(/(?:\[GitHub:)\d+/g)
-          .then(console.log(matches))
-          #.each (match) ->
-            #console.log(match)
+        # Retrieve all Assembla ticket numbers from body and find matching Github issue number
+        promise = []
+        newBody = issue.github_issue_body
+        re = /(?:\[GitHub:)(\d+)/g
 
-        # Save updated body in MongoDb
-        db.collection('assembla2github').update({'body': body}, {'_id': data._id}, {upsert: false})
+        while (matches = re.exec(issue.github_issue_body)) isnt null
+          assemblaId = parseInt(matches[1])
+          mapping = db.collection('assembla2github')
+            .find({'assembla_ticket_number': assemblaId}).toArrayAsync()
+
+          promise.push(mapping)
+
+        Promise.all(promise)
+        .each (result) ->
+          if result.length > 0
+            relatedIssue = result[0]
+            oldId = relatedIssue.assembla_ticket_number
+            newId = relatedIssue.github_issue_number
+
+            # Update Github issue number in body
+            re = ///\[GitHub:#{oldId}\]///g
+            newBody = issue.github_issue_body.replace(re, "##{newId}")
+        .then () ->
+            # Save updated body in MongoDb
+            db.collection('assembla2github').updateAsync({'body': newBody}, {'_id': issue._id}, {upsert: false})
+        .then () ->
+            # Push updated body to GitHub
+
+            githubIssue = github.issue(repo, issue.github_issue_number)
+            githubIssue.updateAsync('body': newBody)
+
 
 ###
 Export data to GitHub
@@ -332,6 +354,7 @@ exportToGithub = ->
           if argv.dryRun
               console.log(issue)
           else
+            ###
             repo.issueAsync(
               title: issue.title,
               body: issue.body,
@@ -339,21 +362,22 @@ exportToGithub = ->
               labels: issue.labels || []
             )
             .spread (body, headers) ->
+              console.log(body)
               # Save Assembla Id and Github Id mapping to MongoDb
               gitHubId = body.number
-              db.collection('assembla2github').insert(
+              db.collection('assembla2github').insertAsync(
                 {
-                  'assembla_id': issue.number,
-                  'github_id': gitHubId,
-                  'body': issue.body,
+                  'assembla_ticket_number': issue.number
+                  'github_issue_number': parseInt(gitHubId)
+                  'github_issue_body': issue.body
                 }
               )
-
-              console.log('created issue', body)
             .delay(argv.delay)
+            ###
     .then () ->
-      # Find and update links to related tickets (GitHub)
-      updateLinks()
+      if !argv.dryRun
+        # Find and update links to related github issues.
+        updateLinks(github, argv.repo.path)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
