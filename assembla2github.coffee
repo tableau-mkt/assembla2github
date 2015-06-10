@@ -154,7 +154,7 @@ joinValues = (ticket) ->
         then relation.ticket2_id
         else relation.ticket1_id
 
-      relatedTicket = db.collection('tickets')
+      db.collection('tickets')
         .find({'id': relatedTicketId}).toArrayAsync()
         .get(0)
         .then (data) ->
@@ -278,6 +278,26 @@ joinValues = (ticket) ->
   )
 
 ###
+Join some values from related collections and augments the ticket object.
+
+@param [Object] ticket object
+@return [Promise] promise to be fulfilled with augmented ticket object
+###
+updateLinks = () ->
+  db.collection('assembla2github')
+    .find().sort({'github_id': 1}).toArrayAsync()
+      .each (issue) ->
+        console.log(issue)
+        #Retrieve all Assembla ticket numbers from body and replace with matching Github issue number
+        matches = issue.body.match(/(?:\[GitHub:)\d+/g)
+          .then(console.log(matches))
+          #.each (match) ->
+            #console.log(match)
+
+        # Save updated body in MongoDb
+        db.collection('assembla2github').update({'body': body}, {'_id': data._id}, {upsert: false})
+
+###
 Export data to GitHub
 
 @example Fetch file contents
@@ -319,8 +339,21 @@ exportToGithub = ->
               labels: issue.labels || []
             )
             .spread (body, headers) ->
+              # Save Assembla Id and Github Id mapping to MongoDb
+              gitHubId = body.number
+              db.collection('assembla2github').insert(
+                {
+                  'assembla_id': issue.number,
+                  'github_id': gitHubId,
+                  'body': issue.body,
+                }
+              )
+
               console.log('created issue', body)
             .delay(argv.delay)
+    .then () ->
+      # Find and update links to related tickets (GitHub)
+      updateLinks()
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
