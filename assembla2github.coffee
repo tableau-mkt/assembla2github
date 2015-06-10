@@ -120,7 +120,7 @@ getTickets = (status = 0) ->
   # Only retrieve tickets with a certain status
   if status == 0 or status == 1
     console.log(status)
-    tickets = db.collection('tickets').find({'state': status}).sort({number: -1}).toArrayAsync()
+    tickets = db.collection('tickets').find({'state': status}).sort({number: -1}).limit(1).toArrayAsync()
   else
     tickets = db.collection('tickets').find().sort({number: -1}).toArrayAsync()
 
@@ -137,31 +137,116 @@ joinValues = (ticket) ->
   # Relationship 0 =
   # Relationship 1 =
   # Relationship 2 =
-  # associations =
+  # associations = db.collection('associations
 
-  # Append Milestones
-  # TODO skim milestone object to only include necessary properties
-  milestone = db.collection('milestones').find({'id': ticket.milestone_id}).toArrayAsync()
+  # Append Milestone
+  milestone = db.collection('milestones')
+    .find({'id': ticket.milestone_id}).toArrayAsync()
+    .then (data) ->
+      return data[0].title
 
-  # Append Statuses
-  status = db.collection('ticket_statuses').find({'id': ticket.ticket_status_id}, {'name' : 1, '_id': 0}).toArrayAsync()
+  # Append Custom Fields (e.g. audience, browser, component, deadline, focus)
+  storage = {}
+  custom_fields = db.collection('workflow_property_vals')
+    .find({'workflow_instance_id': ticket.id}, {'workflow_property_def_id': 1, 'value': 1, '_id': 0}).toArrayAsync()
+    .map (custom_field) ->
+      db.collection('workflow_property_defs').find({'id': custom_field.workflow_property_def_id}, {'title': 1, '_id': 0}).toArrayAsync()
+        .map (custom_field_label) ->
+          storage[custom_field_label.title] = custom_field.value
+    .then () ->
+      return storage
+
+  # Append Status
+  status = db.collection('ticket_statuses')
+    .find({'id': ticket.ticket_status_id}).toArrayAsync()
+    .then (data) ->
+      return data[0].title
 
   # Append Tags
-  tags = db.collection('ticket_tags').find({'ticket_id': ticket.id}, {'tag_name_id' : 1, '_id' : 0}).toArrayAsync()
-  .then (tagIds) ->
-    if tagIds.length > 0
-      return db.collection('tag_names').find({'id': [$in: tagIds]}, {'name' : 1, '_id' : 0}).toArrayAsync()
+  tags = db.collection('ticket_tags')
+    .find({'ticket_id': ticket.id}, {'tag_name_id': 1, '_id': 0}).toArrayAsync()
+    .then (tagIds) ->
+      if tagIds.length > 0
+        tagIds = _.pluck(tagIds, 'tag_name_id')
+        db.collection('tag_names').find({'id': {$in: tagIds}}).toArrayAsync()
+          .map (data) ->
+            return data.name
+    .then (results) ->
+      return results
 
   return Promise.props(
+    custom_fields: custom_fields,
     milestone: milestone,
     status: status,
     tags: tags,
     #foo: new Promise (resolve, reject) -> setTimeout(resolve, 1000)
   ).then((results) ->
-    ticket.milestone = results.milestone || false
-    ticket.status = results.status || false
-    ticket.tags = results.tags || false
-    return ticket
+    ###
+      Issue
+
+      id: 69995873
+      number: 1
+      date: '2014-01-21 18:00'
+      title: 'Found a bug'
+      body: 'Description of the bug']
+      state: 'Open'
+      status: 'New'
+      priority: 'High'
+      assignee: 'User Name'
+      component: 'New Feature!'
+      milestone: 'Sprint Ending 6/11/2015'
+      plan_level: 'None'
+      estimate: 'Medium'
+      audience: 'Mkt General'
+      browser: 'IE7'
+      deadline: '2015-06-11'
+      focus: 'Search'
+      tags: ['tag_1', 'tag_2']
+    ###
+    # Mappers
+    estimateMapper = {
+      '1': 'None'
+      '2': 'Small'
+      '3': 'Medium'
+      '4': 'Large'
+    }
+    priorityMapper = {
+      '1': 'Highest'
+      '2': 'High'
+      '3': 'Normal'
+      '4': 'Low'
+      '5': 'Lowest'
+    }
+    stateMapper = {
+      '0': 'Closed'
+      '1': 'Open'
+    }
+
+    console.log(ticket)
+
+    # Create Issue
+    issue = {
+      id: ticket.id
+      number: ticket.number
+      date: ticket.created_on
+      title: ticket.summary
+      body: ticket.description
+      state: stateMapper[ticket.state]
+      status: results.status || false
+      priority: priorityMapper[ticket.priority]
+      assignee: false
+      component: results.custom_fields.component || false
+      milestone: results.milestone || false
+      plan_level: false
+      estimate: estimateMapper[ticket.estimate]
+      audience: results.custom_fields.audience || false
+      browser: results.custom_fields.browser || false
+      deadline: results.custom_fields.deadline || false
+      focus: results.custom_fields.focus || false
+      tags: results.tags || []
+    }
+
+    return issue
   )
 
 ###
@@ -191,20 +276,20 @@ exportToGithub = ->
   .each (ticket) ->
     # Append extra information to the ticket object.
     joinValues(ticket)
-    .then (ticket) ->
-      ticket = transform(ticket) if _.isFunction(transform)
-      unless _.isObject(ticket)
+    .then (issue) ->
+      issue = transform(issue) if _.isFunction(transform)
+      unless _.isObject(issue)
         console.log('skipping, no data object')
         return
       if argv.dryRun
-        console.log(ticket)
+        console.log(issue)
         #console.log('#%s %s [%s]', ticket.number, ticket.summary, (ticket.labels || []).join(', '))
       else
         repo.issueAsync(
-          title: ticket.title,
-          body: ticket.body,
-          assignee: ticket.assignee,
-          labels: ticket.labels || []
+          title: issue.title,
+          body: issue.body,
+          assignee: issue.assignee,
+          labels: issue.labels || []
         )
         .spread (body, headers) ->
           console.log('created issue', body)
