@@ -74,7 +74,7 @@ module.exports = (data) ->
   )
 
   # Append related ticket info to body.
-  if _.any(data.relatedTickets, (related) -> related.length)
+  if _.keys(data.relatedTickets).length
     data.body += '\n\n## Related Tickets\n'
     _.each(data.relatedTickets, (tickets, key) ->
       data.body += "### #{key}\n" if tickets.length
