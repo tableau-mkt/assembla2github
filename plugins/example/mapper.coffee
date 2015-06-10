@@ -40,7 +40,7 @@ Transform the data object before exporting to GitHub.
   focus: 'Search'
   tags: ['tag_1', 'tag_2']
 
-  related_tickets: {
+  relatedTickets: {
     'parents': [],
     'children': [],
     'related': [],
@@ -74,12 +74,12 @@ module.exports = (data) ->
   )
 
   # Append related ticket info to body.
-  if _.any(data.related_tickets, (related) -> related.length)
+  if _.any(data.relatedTickets, (related) -> related.length)
     data.body += '\n\n## Related Tickets\n'
-    _.each(data.related_tickets, (tickets, key) ->
+    _.each(data.relatedTickets, (tickets, key) ->
       data.body += "### #{key}\n" if tickets.length
       _.each(tickets, (ticket) ->
-        data.body += "- [#{ticket.title}](#{baseUrl}/#{ticket.number}) (#{ticket.number})"
+        data.body += "- [#{ticket.title}](#{baseUrl}/#{ticket.number}) (#{ticket.number})\n"
       )
     )
 

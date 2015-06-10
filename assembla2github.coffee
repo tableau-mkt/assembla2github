@@ -124,7 +124,7 @@ getTickets = (status = 0) ->
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
-      .find().sort({number: -1}).toArrayAsync()
+      .find({'number': 3256}).sort({number: -1}).toArrayAsync()
 
   return tickets
 
@@ -147,9 +147,20 @@ joinValues = (ticket) ->
   }
   tempAssociations = {}
   associations = db.collection('ticket_associations')
-    .find({'ticket1_id': ticket.id}, {'ticket1_id': 1, 'ticket2_id': 1, 'relationship': 1, '_id': 0}).toArrayAsync()
+    .find({$or: [{'ticket1_id': ticket.id}, {'ticket2_id': ticket.id}]}, {'ticket1_id': 1, 'ticket2_id': 1, 'relationship': 1, '_id': 0}).toArrayAsync()
     .map (relation) ->
-      tempAssociations[relationMapper[relation.relationship]] = relation.ticket2_id
+      relatedTicketId =
+        if ticket.id is relation.ticket1_id
+        then relation.ticket2_id
+        else relation.ticket1_id
+
+      relatedTicket = db.collection('tickets')
+        .find({'id': relatedTicketId}).toArrayAsync()
+        .get(0)
+        .then (data) ->
+          key = relationMapper[relation.relationship]
+          tempAssociations[key] or= {}
+          tempAssociations[key][data.id] = data
     .then () ->
       return tempAssociations
 
@@ -157,7 +168,8 @@ joinValues = (ticket) ->
   milestone = db.collection('milestones')
     .find({'id': ticket.milestone_id}).toArrayAsync()
     .then (data) ->
-      return data[0].title
+      if data.length > 0
+        return data[0].title
 
   # Append Custom Fields (e.g. audience, browser, component, deadline, focus)
   tempCustomFields = {}
@@ -174,7 +186,8 @@ joinValues = (ticket) ->
   status = db.collection('ticket_statuses')
     .find({'id': ticket.ticket_status_id}).toArrayAsync()
     .then (data) ->
-      return data[0].title
+      if data.length > 0
+        return data[0].title
 
   # Append Tags
   tags = db.collection('ticket_tags')
@@ -288,27 +301,26 @@ exportToGithub = ->
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo.path)
   getTickets(argv['status'])
-  .each (ticket) ->
-    # Create issue object with relevant ticket information.
-    joinValues(ticket)
-    .then (issue) ->
-      issue = transform(issue) if _.isFunction(transform)
-      unless _.isObject(issue)
-        console.log('skipping, no data object')
-        return
-      if argv.dryRun
-        if issue.relatedTickets.parents
-          console.log(issue)
-      else
-        repo.issueAsync(
-          title: issue.title,
-          body: issue.body,
-          assignee: issue.assignee,
-          labels: issue.labels || []
-        )
-        .spread (body, headers) ->
-          console.log('created issue', body)
-        .delay(argv.delay)
+    .each (ticket) ->
+      # Create issue object with relevant ticket information.
+      joinValues(ticket)
+        .then (issue) ->
+          issue = transform(issue) if _.isFunction(transform)
+          unless _.isObject(issue)
+            console.log('skipping, no data object')
+            return
+          if argv.dryRun
+              console.log(issue)
+          else
+            repo.issueAsync(
+              title: issue.title,
+              body: issue.body,
+              assignee: issue.assignee,
+              labels: issue.labels || []
+            )
+            .spread (body, headers) ->
+              console.log('created issue', body)
+            .delay(argv.delay)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
