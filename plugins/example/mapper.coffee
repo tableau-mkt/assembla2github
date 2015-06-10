@@ -73,6 +73,21 @@ module.exports = (data) ->
       )
   )
 
+  # Replace some basic textile with markdown equivalent.
+  data.body = data.body.replace(/^###/gm, '    *')
+  data.body = data.body.replace(/^##/gm, '  *')
+  data.body = data.body.replace(/^#/gm, '1.')
+
+  data.body = data.body.replace(/^\*\*\*/gm, '    *')
+  data.body = data.body.replace(/^\*\*/gm, '  *')
+
+  data.body = data.body.replace(/h1\./g, '#')
+  data.body = data.body.replace(/h2\./g, '##')
+  data.body = data.body.replace(/h3\./g, '###')
+  data.body = data.body.replace(/h4\./g, '####')
+  data.body = data.body.replace(/h5\./g, '#####')
+  data.body = data.body.replace(/h6\./g, '######')
+
   # Append related ticket info to body.
   if _.keys(data.relatedTickets).length
     data.body += '\n\n## Related Tickets\n'
@@ -90,20 +105,5 @@ module.exports = (data) ->
     data.assignee = secret.github_users[data.assignee]
   catch error
     delete data.assignee
-
-  # Replace some basic textile with markdown equivalent.
-  data.body = data.body.replace(/^###/gm, '    *')
-  data.body = data.body.replace(/^##/gm, '  *')
-  data.body = data.body.replace(/^#/gm, '1.')
-
-  data.body = data.body.replace(/^\*\*\*/gm, '    *')
-  data.body = data.body.replace(/^\*\*/gm, '  *')
-
-  data.body = data.body.replace(/h1\./g, '#')
-  data.body = data.body.replace(/h2\./g, '##')
-  data.body = data.body.replace(/h3\./g, '###')
-  data.body = data.body.replace(/h4\./g, '####')
-  data.body = data.body.replace(/h5\./g, '#####')
-  data.body = data.body.replace(/h6\./g, '######')
 
   return data
