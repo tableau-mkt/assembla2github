@@ -34,7 +34,7 @@ yargs
       .describe('dry-run', 'Show what issues would have been created')
       .describe('delay', 'GitHub API call delay (in ms)')
       .alias('d', 'delay')
-      .default('delay', 1000)
+      .default('delay', 250)
       .describe('github-token', 'GitHub API access token')
       .alias('t', 'github-token')
       .check((argv) ->
@@ -124,7 +124,7 @@ getTickets = (status = 0) ->
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
-      .find({'number': 3256}).sort({number: -1}).toArrayAsync()
+      .find().sort({number: -1}).toArrayAsync()
 
   return tickets
 
@@ -283,17 +283,44 @@ Join some values from related collections and augments the ticket object.
 @param [Object] ticket object
 @return [Promise] promise to be fulfilled with augmented ticket object
 ###
-updateLinks = () ->
+updateLinks = (github, repo) ->
   db.collection('assembla2github')
-    .find().sort({'github_id': 1}).toArrayAsync()
+    .find().sort({github_issue_number: -1}).toArrayAsync()
       .each (issue) ->
-        console.log(issue)
-        #Retrieve all Assembla ticket numbers from body and replace with matching Github issue number
-        matches = issue.body.match(/(?:\[GitHub:)\d+/g)
-        console.log(matches)
+        promise = []
+        newBody = issue.github_issue_body
 
-        # Save updated body in MongoDb
-        db.collection('assembla2github').update({'body': issue.body}, {'_id': data._id}, {upsert: false})
+        # Retrieve all Assembla ticket numbers from body and find matching Github issue number
+        re = /(?:\[GitHub:)(\d+)\]/g
+        while (matches = re.exec(issue.github_issue_body)) isnt null
+          assemblaId = parseInt(matches[1])
+          mapping = db.collection('assembla2github')
+            .find({'assembla_ticket_number': assemblaId}).toArrayAsync()
+
+          promise.push(mapping)
+
+        Promise.all(promise)
+        .each (result) ->
+          if result.length > 0
+            relatedIssue = result[0]
+            oldId = relatedIssue.assembla_ticket_number
+            newId = relatedIssue.github_issue_number
+
+            # Update Github issue number in body
+            re = ///\[GitHub:#{oldId}\]///g
+            newBody = newBody.replace(re, "##{newId}")
+        .then () ->
+          # Remove remaining github link placeholders (probably referring to closed ticket)
+          re = /(?:\[GitHub:)(\d+)\] /g
+          newBody = newBody.replace(re, "")
+        .then () ->
+          # Save updated body in MongoDb
+           db.collection('assembla2github').updateAsync({'_id': issue._id}, {$set: {'github_issue_body': newBody}}, {upsert: false})
+        .then () ->
+          # Push updated body to GitHub
+          console.log('Updating issue: #' + issue.github_issue_number)
+          githubIssue = github.issue(repo, issue.github_issue_number)
+          githubIssue.updateAsync('body': newBody)
 
 ###
 Export data to GitHub
@@ -338,18 +365,23 @@ exportToGithub = ->
             )
             .spread (body, headers) ->
               # Save Assembla Id and Github Id mapping to MongoDb
-              gitHubId = body.number
+              githubIssueNumber = parseInt(body.number)
+              console.log('Saving issue: #' + githubIssueNumber)
               db.collection('assembla2github').insertAsync(
-                'assembla_id': issue.number
-                'github_id': gitHubId
-                'body': issue.body
+                {
+                  'assembla_ticket_number': issue.number
+                  'github_issue_number': githubIssueNumber
+                  'github_issue_body': issue.body
+                }
               )
-
-              console.log('created issue', body)
             .delay(argv.delay)
     .then () ->
-      # Find and update links to related tickets (GitHub)
-      updateLinks()
+      if !argv.dryRun
+        # Find and update links to related github issues.
+        console.log('Updating related tickets...')
+        updateLinks(github, argv.repo.path)
+          .then () ->
+            console.log('WOW!')
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
