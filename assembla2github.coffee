@@ -11,6 +11,7 @@ Promise = require('bluebird')
 MongoDB = require('mongodb')
 yargs = require('yargs')
 prompt = require ('prompt')
+ProgressBar = require ('progress')
 
 require('coffee-script/register')
 
@@ -110,7 +111,7 @@ purgeData = ->
   db.collection('tickets').countAsync()
     .then (count) ->
       if count > 0
-        askYesNoConfirmation('Do you want to purge old existing data?')
+        askYesNoConfirmation('Do you want to purge existing data?')
           .then (response) ->
             if response is 'yes'
               console.log('purging old data')
@@ -161,7 +162,7 @@ getTickets = (state = 0) ->
   # Only retrieve tickets with a certain state
   if state == 0 or state == 1
     tickets = db.collection('tickets')
-      .find({'number': 2092, 'state': state}).sort({number: -1}).toArrayAsync()
+      .find({'state': state}).sort({number: -1}).toArrayAsync()
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
@@ -386,11 +387,22 @@ Export data to GitHub
   })
 ###
 exportToGithub = ->
+  bar = new ProgressBar('Export data to github [:bar] [:percent] [:eta seconds left]', {
+    'complete': '='
+    'incomplete': ' '
+    'stream': process.stdout
+    'total': 0
+    'width': 100
+  })
   console.log('exporting to github', argv.repo.path)
   octonode = Promise.promisifyAll(require('octonode'))
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo.path)
   getTickets(argv['state'])
+    .then (tickets) ->
+      # Initiate progress bar
+      bar.total = tickets.length
+      return tickets
     .each (ticket) ->
       # Create issue object with relevant ticket information.
       joinValues(ticket)
@@ -420,6 +432,8 @@ exportToGithub = ->
                   'github_issue_body': issue.body
                 }
               )
+            .then ->
+              bar.tick()
             .delay(argv.delay)
     .then () ->
       # Find and update links to related github issues.
