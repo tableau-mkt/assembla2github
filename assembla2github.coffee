@@ -10,6 +10,8 @@ _ = require('lodash')
 Promise = require('bluebird')
 MongoDB = require('mongodb')
 yargs = require('yargs')
+prompt = require ('prompt')
+
 require('coffee-script/register')
 
 # Set up yargs option parsing
@@ -69,6 +71,7 @@ console.log(argv) #if argv.verbose
 MongoDB = Promise.promisifyAll(MongoDB)
 MongoClient = Promise.promisifyAll(MongoDB.MongoClient)
 Promise.promisifyAll(MongoDB.Cursor.prototype)
+prompt = Promise.promisifyAll(prompt)
 
 mongoUrl = process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/assembla2github'
 
@@ -78,6 +81,44 @@ fieldsMeta = {}
 
 # Require transform plugin if needed
 transform = require(argv.transform) if argv.transform
+
+###
+Generic Yes/No Prompt Promise
+###
+askYesNoConfirmation = (message) ->
+  property = {
+    name: 'yesno'
+    message: message || 'Would you like to continue? (y/n)'
+    validator: /y[es]*|n[o]?/
+    warning: 'Please respond with yes or no'
+    default: 'yes'
+  }
+
+  prompt.start()
+  prompt.getAsync(property)
+    .then (response) ->
+      if response.yesno is 'yes' || response.yesno is 'y'
+        return 'yes'
+      else
+        return 'no'
+
+
+###
+Purge data from MongoDB
+###
+purgeData = ->
+  db.collection('tickets').countAsync()
+    .then (count) ->
+      if count > 0
+        askYesNoConfirmation('Do you want to purge old existing data?')
+          .then (response) ->
+            if response is 'yes'
+              console.log('purging old data')
+              return db.collectionsAsync()
+                .each (data) ->
+                  return db.collection(data.s.name).remove({})
+                .then () ->
+                  console.log('data purged')
 
 ###
 Import data from Assembla's dump.js file into MongoDB.
@@ -397,7 +438,7 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
 
 if command is 'import'
-  promise = promise.then(importDumpFile).then(-> console.log('done importing from assembla'))
+  promise = promise.then(purgeData).then(importDumpFile).then(-> console.log('done importing from assembla'))
 else if command is 'export'
   promise = promise.then(exportToGithub).then(-> console.log('done exporting to github'))
 
