@@ -27,8 +27,8 @@ yargs
       .describe('repo', 'GitHub repo (user/repo)')
       .demand('repo')
       .alias('r', 'repo')
-      .alias('s', 'status')
-      .describe('status', 'Which tickets to include (0 = closed; 1 = open; 2 = all). Defaults to open (1)')
+      .alias('s', 'state')
+      .describe('state', 'Which tickets to include (0 = closed; 1 = open; 2 = all). Defaults to open (1)')
       .describe('transform', 'Transform plugin (see readme)')
       .alias('T', 'transform')
       .describe('dry-run', 'Show what issues would have been created')
@@ -111,16 +111,16 @@ importDumpFile = ->
     stream.on 'end', -> eof = true
 
 ###
-Get all Assembla tickets w/ a given status
+Get all Assembla tickets w/ a given state
 
-@param [Integer] status
+@param [Integer] state
 @return [Array] tickets
 ###
-getTickets = (status = 0) ->
-  # Only retrieve tickets with a certain status
-  if status == 0 or status == 1
+getTickets = (state = 0) ->
+  # Only retrieve tickets with a certain state
+  if state == 0 or state == 1
     tickets = db.collection('tickets')
-      .find({'state': status}).sort({number: -1}).toArrayAsync()
+      .find({'number': 2092, 'state': state}).sort({number: -1}).toArrayAsync()
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
@@ -300,27 +300,31 @@ updateLinks = (github, repo) ->
           promise.push(mapping)
 
         Promise.all(promise)
-        .each (result) ->
-          if result.length > 0
+        .each (relatedIssues) ->
+          if relatedIssues.length > 0
             relatedIssue = result[0]
-            oldId = relatedIssue.assembla_ticket_number
-            newId = relatedIssue.github_issue_number
+            assemblaId = relatedIssue.assembla_ticket_number
+            githubId = relatedIssue.github_issue_number
 
             # Update Github issue number in body
-            re = ///\[GitHub:#{oldId}\]///g
-            newBody = newBody.replace(re, "##{newId}")
+            re = ///\[GitHub:#{assemblaId}\]///g
+            newBody = newBody.replace(re, "##{githubId}")
         .then () ->
           # Remove remaining github link placeholders (probably referring to closed ticket)
           re = /(?:\[GitHub:)(\d+)\] /g
           newBody = newBody.replace(re, "")
         .then () ->
-          # Save updated body in MongoDb
-           db.collection('assembla2github').updateAsync({'_id': issue._id}, {$set: {'github_issue_body': newBody}}, {upsert: false})
-        .then () ->
-          # Push updated body to GitHub
-          console.log('Updating issue: #' + issue.github_issue_number)
-          githubIssue = github.issue(repo, issue.github_issue_number)
-          githubIssue.updateAsync('body': newBody)
+          if argv.dryRun
+            issue.body = newBody
+            console.log(issue)
+          else
+            # Save updated body in MongoDb
+            db.collection('assembla2github').updateAsync({'_id': issue._id}, {$set: {'github_issue_body': newBody}}, {upsert: false})
+
+            # Push updated body to GitHub
+            githubIssue = github.issue(repo, issue.github_issue_number)
+            githubIssue.updateAsync('body': newBody)
+            console.log('Updated issue #' + issue.github_issue_number)
 
 ###
 Export data to GitHub
@@ -345,7 +349,7 @@ exportToGithub = ->
   octonode = Promise.promisifyAll(require('octonode'))
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo.path)
-  getTickets(argv['status'])
+  getTickets(argv['state'])
     .each (ticket) ->
       # Create issue object with relevant ticket information.
       joinValues(ticket)
@@ -358,30 +362,30 @@ exportToGithub = ->
               console.log(issue)
           else
             repo.issueAsync(
-              title: issue.title,
-              body: issue.body,
-              assignee: issue.assignee,
+              title: issue.title
+              body: issue.body
+              assignee: issue.assignee
               labels: issue.labels || []
+              state: issue.state
             )
             .spread (body, headers) ->
               # Save Assembla Id and Github Id mapping to MongoDb
-              githubIssueNumber = parseInt(body.number)
-              console.log('Saving issue: #' + githubIssueNumber)
+              githubId = parseInt(body.number)
+              console.log('Created new issue #' + githubId)
               db.collection('assembla2github').insertAsync(
                 {
                   'assembla_ticket_number': issue.number
-                  'github_issue_number': githubIssueNumber
+                  'github_issue_number': githubId
                   'github_issue_body': issue.body
                 }
               )
             .delay(argv.delay)
     .then () ->
-      if !argv.dryRun
-        # Find and update links to related github issues.
-        console.log('Updating related tickets...')
-        updateLinks(github, argv.repo.path)
-          .then () ->
-            console.log('WOW!')
+      # Find and update links to related github issues.
+      console.log('Updating issue to include related issues.')
+      updateLinks(github, argv.repo.path)
+        .then () ->
+          console.log('WOW!')
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
