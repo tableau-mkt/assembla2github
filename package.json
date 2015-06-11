@@ -20,7 +20,7 @@
     "mongodb": "^2.0.33",
     "octonode": "^0.6.17",
     "progress": "^1.1.8",
-    "prompt": "^2.14",
+    "prompt": "^0.2.14",
     "yargs": "^3.10.0"
   },
   "engines": {

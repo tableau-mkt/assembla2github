@@ -18,7 +18,24 @@ require('coffee-script/register')
 # Set up yargs option parsing
 yargs
   .usage('Usage: $0 <command> [options]')
-  .command('import', 'import from assembla', (yargs) ->
+  .command('labels', 'create labels in github repo', (yargs) ->
+    yargs
+      .describe('repo', 'GitHub repo (user/repo)')
+      .demand('repo')
+      .alias('r', 'repo')
+      .describe('labels', 'GitHub labels to create (separated by spaces, quotes around the entire option value)')
+      .alias('l', 'labels')
+      .describe('transform', 'Transform plugin (see readme)')
+      .alias('T', 'transform')
+      .check((argv) ->
+        repoParts = argv.repo.split('/')
+        throw new Error('Check GitHub repo value') unless repoParts.length is 2
+        throw new Error('labels or transform plugin option required') unless argv.labels or argv.transform
+        argv['github-token'] ?= process.env.GITHUB_TOKEN
+        true
+      )
+      .help('h').alias('h', 'help')
+  )  .command('import', 'import from assembla', (yargs) ->
     yargs
       .describe('file', 'assembla export file')
       .demand('file')
@@ -56,6 +73,7 @@ yargs
   .demand(1)
   .example('$0 import -f dump.js')
   .example('$0 export -r user/repo')
+  .example('$0 labels -r user/repo -l "label-one label-two label-three"')
   .describe('verbose', 'Verbose mode')
   .alias('v', 'verbose')
   .count('verbose')
@@ -81,7 +99,7 @@ collections = {}
 fieldsMeta = {}
 
 # Require transform plugin if needed
-transform = require(argv.transform) if argv.transform
+plugin = require(argv.transform) if argv.transform
 
 ###
 Generic Yes/No Prompt Promise
@@ -387,6 +405,36 @@ updateLinks = (github, repo, bar) ->
             githubIssue.updateAsync('body': newBody).then () -> bar.tick()
 
 ###
+Create labels in GitHub
+
+@param [Array] labels  array of (Object) labels (name required)
+
+@example basic
+  createLabels([{name: 'foo', color: 'ff0000'}, {name: 'bar', color: 'bbaaaa'}])
+###
+createLabels = (labels) ->
+  octonode = Promise.promisifyAll(require('octonode'))
+  github = octonode.client(argv['github-token'])
+  repo = github.repo(argv.repo)
+
+  console.log('Creating labels\n%s\n', _.pluck(labels, 'name').join(', '))
+  Promise.map(
+    labels,
+    ((label) ->
+      Promise.try(->
+        console.log(label.name)
+        repo.labelAsync(label)
+      ).catch((e) ->
+        if e.message is 'Validation Failed'
+          console.log(e.body.errors)
+        else
+          throw e
+      )
+    ),
+    {concurrency: 2}
+  )
+
+###
 Export data to GitHub
 
 @example Fetch file contents
@@ -425,7 +473,7 @@ exportToGithub = ->
       # Create issue object with relevant ticket information.
       joinValues(ticket)
         .then (issue) ->
-          issue = transform(issue) if _.isFunction(transform)
+          issue = plugin.transform(issue) if _.isFunction(plugin.transform)
           unless _.isObject(issue)
             console.log('skipping, no data object')
             return
@@ -465,10 +513,20 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     # Create a unique, sparse index on the number column, if it doesn't exist.
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
 
-if command is 'import'
-  promise = promise.then(purgeData).then(importDumpFile)
-else if command is 'export'
-  promise = promise.then(exportToGithub)
+switch command
+  when 'import'
+    promise = promise.then(purgeData).then(importDumpFile)
+  when 'export'
+    promise = promise.then(exportToGithub)
+  when 'labels'
+    promise = promise.then(->
+      labels = argv.labels.match(/\S+/g)
+      if labels.length
+        labels = _.map(labels, (label) -> {name: label})
+      else
+        plugin.labels()
+      createLabels(labels)
+    )
 
 promise.done ->
   console.log('All done...')

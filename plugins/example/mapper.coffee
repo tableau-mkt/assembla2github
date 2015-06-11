@@ -50,7 +50,7 @@ Transform the data object before exporting to GitHub.
     'after': [],
   }
 ###
-module.exports = (data) ->
+module.exports.transform = (data) ->
   baseUrl = 'https://www.assembla.com/spaces/upgrade/tickets'
   # Map values into an array of labels.
   data.labels = []
@@ -110,3 +110,15 @@ module.exports = (data) ->
     delete data.assignee
 
   return data
+
+module.exports.labels = ->
+  _.chain(mapper)
+    .reduce((labels, item) ->
+      if _.isObject(item)
+        labels.concat(_.flatten(_.values(item)))
+      else
+        labels
+    , [])
+    .uniq()
+    .map((label) -> {name: label})
+    .value()
