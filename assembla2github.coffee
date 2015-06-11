@@ -144,6 +144,7 @@ importDumpFile = ->
     countLines = new Promise (resolve, reject) ->
       countStream = byline(fs.createReadStream(argv.file, encoding: 'utf8'))
       countStream.on 'data', (line) ->
+        # Initiate progress bar total
         bar.total += 1
       countStream.on 'end', -> resolve()
 
@@ -343,7 +344,7 @@ Join some values from related collections and augments the ticket object.
 @param [Object] ticket object
 @return [Promise] promise to be fulfilled with augmented ticket object
 ###
-updateLinks = (github, repo) ->
+updateLinks = (github, repo, bar) ->
   db.collection('assembla2github')
     .find().sort({github_issue_number: -1}).toArrayAsync()
       .each (issue) ->
@@ -362,7 +363,7 @@ updateLinks = (github, repo) ->
         Promise.all(promise)
         .each (relatedIssues) ->
           if relatedIssues.length > 0
-            relatedIssue = result[0]
+            relatedIssue = relatedIssues[0]
             assemblaId = relatedIssue.assembla_ticket_number
             githubId = relatedIssue.github_issue_number
 
@@ -383,8 +384,7 @@ updateLinks = (github, repo) ->
 
             # Push updated body to GitHub
             githubIssue = github.issue(repo, issue.github_issue_number)
-            githubIssue.updateAsync('body': newBody)
-            console.log('Updated issue #' + issue.github_issue_number)
+            githubIssue.updateAsync('body': newBody).then () -> bar.tick()
 
 ###
 Export data to GitHub
@@ -405,8 +405,8 @@ Export data to GitHub
   })
 ###
 exportToGithub = ->
-  bar = new ProgressBar("Export data to github #{argv.repo.path} [:bar] [:percent] [:eta seconds left]", {
-    'complete': '>'
+  bar = new ProgressBar("Exporting data to github #{argv.repo.path} [:bar] [:percent] [:eta seconds left]", {
+    'complete': '='
     'incomplete': ' '
     'stream': process.stdout
     'total': 0
@@ -418,8 +418,8 @@ exportToGithub = ->
   repo = github.repo(argv.repo.path)
   getTickets(argv['state'])
     .then (tickets) ->
-      # Initiate progress bar
-      bar.total = tickets.length
+      # Initiate progress bar total (looping over tickets twice to update links)
+      bar.total = tickets.length * 2
       return tickets
     .each (ticket) ->
       # Create issue object with relevant ticket information.
@@ -442,7 +442,6 @@ exportToGithub = ->
             .spread (body, headers) ->
               # Save Assembla Id and Github Id mapping to MongoDb
               githubId = parseInt(body.number)
-              console.log('Created new issue #' + githubId)
               db.collection('assembla2github').insertAsync(
                 {
                   'assembla_ticket_number': issue.number
@@ -450,15 +449,12 @@ exportToGithub = ->
                   'github_issue_body': issue.body
                 }
               )
-            .then ->
+            .then () ->
               bar.tick()
             .delay(argv.delay)
     .then () ->
       # Find and update links to related github issues.
-      console.log('Updating issue to include related issues.')
-      updateLinks(github, argv.repo.path)
-        .then () ->
-          console.log('WOW!')
+      updateLinks(github, argv.repo.path, bar)
 
 # Connect to mongodb (bluebird promises)
 promise = MongoDB.MongoClient.connectAsync(mongoUrl)
@@ -470,10 +466,10 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
 
 if command is 'import'
-  promise = promise.then(purgeData).then(importDumpFile).then(-> console.log('done importing from assembla'))
+  promise = promise.then(purgeData).then(importDumpFile)
 else if command is 'export'
-  promise = promise.then(exportToGithub).then(-> console.log('done exporting to github'))
+  promise = promise.then(exportToGithub)
 
 promise.done ->
-  console.log('exiting')
+  console.log('All done...')
   db.close()
