@@ -108,49 +108,67 @@ askYesNoConfirmation = (message) ->
 Purge data from MongoDB
 ###
 purgeData = ->
-  db.collection('tickets').countAsync()
-    .then (count) ->
-      if count > 0
+  db.collectionsAsync()
+    .then (data) ->
+      if data.length > 0
         askYesNoConfirmation('Do you want to purge existing data?')
-          .then (response) ->
-            if response is 'yes'
-              console.log('purging old data')
-              return db.collectionsAsync()
-                .each (data) ->
-                  return db.collection(data.s.name).remove({})
-                .then () ->
-                  console.log('data purged')
+        .then (response) ->
+          if response is 'yes'
+            return data
+          else
+            throw new Promise.CancellationError
+    .each (collection) ->
+      return db.collection(collection.s.name).remove({})
+    .then () ->
+      console.log('data purged')
+    .catch Promise.CancellationError, (e) ->
+      console.log('Continuing without data purge.')
 
 ###
 Import data from Assembla's dump.js file into MongoDB.
 ###
 importDumpFile = ->
-  console.log('importing assembla data from dump.js')
   return new Promise (resolve, reject) ->
+    bar = new ProgressBar("Importing Assembla data [:bar] [:percent] [:eta seconds left]", {
+      'complete': '='
+      'incomplete': ' '
+      'stream': process.stdout
+      'total': 0
+      'width': 100
+    })
     fs = require('fs')
     byline = require('byline')
     eof = false
-    stream = byline(fs.createReadStream(argv.file, encoding: 'utf8'))
-    stream.on 'data', (line) ->
-      matches = line.match(/^([\w]+)(:fields)?, (.+)$/)
-      if matches
-        fields = Boolean(matches[2])
-        name = matches[1]
-        data = JSON.parse(matches[3])
-        fieldsMeta[name] = data if fields
-        collections[name] = db.collection(name) unless collections[name]
-        unless fields
-          # Convert line to Object.
-          doc = _.zipObject(fieldsMeta[name], data)
-          # Insert into mongo collection.
-          collections[name].insertAsync(doc)
-            .then ->
-              resolve() if eof
-              process.stdout.write('.')
-            # Swallow mongodb duplicate key error.
-            .catch MongoDB.MongoError, (e) ->
-              throw e if e.message.indexOf('duplicate key') is -1
-    stream.on 'end', -> eof = true
+
+    # Count total number of lines
+    countLines = new Promise (resolve, reject) ->
+      countStream = byline(fs.createReadStream(argv.file, encoding: 'utf8'))
+      countStream.on 'data', (line) ->
+        bar.total += 1
+      countStream.on 'end', -> resolve()
+
+    countLines.then () ->
+      stream = byline(fs.createReadStream(argv.file, encoding: 'utf8'))
+      stream.on 'data', (line) ->
+        bar.tick()
+        matches = line.match(/^([\w]+)(:fields)?, (.+)$/)
+        if matches
+          fields = Boolean(matches[2])
+          name = matches[1]
+          data = JSON.parse(matches[3])
+          fieldsMeta[name] = data if fields
+          collections[name] = db.collection(name) unless collections[name]
+          unless fields
+            # Convert line to Object.
+            doc = _.zipObject(fieldsMeta[name], data)
+            # Insert into mongo collection.
+            collections[name].insertAsync(doc)
+              .then ->
+                resolve() if eof
+              # Swallow mongodb duplicate key error.
+              .catch MongoDB.MongoError, (e) ->
+                throw e if e.message.indexOf('duplicate key') is -1
+      stream.on 'end', -> eof = true
 
 ###
 Get all Assembla tickets w/ a given state
@@ -387,8 +405,8 @@ Export data to GitHub
   })
 ###
 exportToGithub = ->
-  bar = new ProgressBar('Export data to github [:bar] [:percent] [:eta seconds left]', {
-    'complete': '='
+  bar = new ProgressBar("Export data to github #{argv.repo.path} [:bar] [:percent] [:eta seconds left]", {
+    'complete': '>'
     'incomplete': ' '
     'stream': process.stdout
     'total': 0
