@@ -75,11 +75,11 @@ tags:
   'Partners':   [cust-mktg-partners]
   'Redesign':   [tag-redesign]
 
-milestones:
-  'Wishlist':          [pri-wishlist]
-  'Waiting List':      [stat-waiting]
-  'Patient Ward':      [stat-triaged]
-  'Community Service': [cust-openSource]
+milestone:
+  'BACKLOG - Wishlist':        [pri-wishlist]
+  'ONGOING - Waiting Room':    [stat-waiting]
+  'ONGOING - Patient Ward':    [stat-triaged]
+  'Drupal Community Service':  [cust-openSource]
 
 browser:
   IE10:     [tag-IE]

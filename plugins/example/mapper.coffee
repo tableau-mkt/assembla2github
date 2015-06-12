@@ -6,11 +6,17 @@ _ = require('lodash')
 
 try
   mapper = yaml.safeLoad(fs.readFileSync(__dirname + '/mapper.yaml', 'utf8'))
+  # Convert mapper keys to lowercase for case-insensitive lookups.
+  _.each(mapper, (value, key) ->
+    if _.isObject value
+      mapper[key] = _.mapKeys(value, (value, key) -> key.toLowerCase())
+  )
   console.log('mapper loaded', mapper)
   secret = yaml.safeLoad(fs.readFileSync(__dirname + '/secret.yaml', 'utf8'))
   console.log('private mapper loaded', secret)
 catch e
   console.log(e)
+
 
 ###
 Transform the data object before exporting to GitHub.
@@ -52,6 +58,7 @@ Transform the data object before exporting to GitHub.
 ###
 module.exports.transform = (data) ->
   baseUrl = 'https://www.assembla.com/spaces/upgrade/tickets'
+
   # Map values into an array of labels.
   data.labels = []
   _.each([
@@ -62,14 +69,14 @@ module.exports.transform = (data) ->
       'audience'
       'focus'
       'tags'
-      'milestones'
+      'milestone'
       'browser'
       'plan_level'
     ],
     (key) ->
-      value = data[key]
+      value = String(data[key]).toLowerCase()
       _.each([].concat(value), (labelKey) ->
-        data.labels = data.labels.concat(mapper[key][labelKey] || [])
+        data.labels = data.labels.concat(mapper[key][String(labelKey).toLowerCase()] || [])
       )
   )
 

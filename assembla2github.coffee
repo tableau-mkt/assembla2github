@@ -72,7 +72,7 @@ purgeData = ->
             throw new Promise.CancellationError
     .each (collection) ->
       return db.collection(collection.s.name).remove({})
-    .then () ->
+    .then ->
       console.log('data purged')
     .catch Promise.CancellationError, (e) ->
       console.log('Continuing without data purge.')
@@ -101,7 +101,7 @@ importDumpFile = ->
         bar.total += 1
       countStream.on 'end', -> resolve()
 
-    countLines.then () ->
+    countLines.then ->
       stream = byline(fs.createReadStream(argv.file, encoding: 'utf8'))
       stream.on 'data', (line) ->
         bar.tick()
@@ -138,7 +138,7 @@ getTickets = (state = 0) ->
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
-      .find().sort({number: -1}).toArrayAsync()
+      .find({number: 3625}).sort({number: -1}).toArrayAsync()
 
   return tickets
 
@@ -175,7 +175,7 @@ joinValues = (ticket) ->
           key = relationMapper[relation.relationship]
           tempAssociations[key] or= {}
           tempAssociations[key][data.id] = data
-    .then () ->
+    .then ->
       return tempAssociations
 
   # Append Milestone
@@ -192,8 +192,8 @@ joinValues = (ticket) ->
     .map (custom_field) ->
       db.collection('workflow_property_defs').find({'id': custom_field.workflow_property_def_id}, {'title': 1, '_id': 0}).toArrayAsync()
         .map (custom_field_label) ->
-          tempCustomFields[custom_field_label.title] = custom_field.value
-    .then () ->
+          tempCustomFields[custom_field_label.title.toLowerCase()] = custom_field.value
+    .then ->
       return tempCustomFields
 
   # Append Status
@@ -248,10 +248,10 @@ joinValues = (ticket) ->
 
     # Mappers
     estimateMapper = {
-      '1': 'None'
-      '2': 'Small'
+      '0': 'None'
+      '1': 'Small'
       '3': 'Medium'
-      '4': 'Large'
+      '7': 'Large'
     }
     priorityMapper = {
       '1': 'Highest'
@@ -323,11 +323,11 @@ updateLinks = (github, repo, bar) ->
             # Update Github issue number in body
             re = ///\[GitHub:#{assemblaId}\]///g
             newBody = newBody.replace(re, "##{githubId}")
-        .then () ->
+        .then ->
           # Remove remaining github link placeholders (probably referring to closed ticket)
           re = /(?:\[GitHub:)(\d+)\] /g
           newBody = newBody.replace(re, "")
-        .then () ->
+        .then ->
           if argv.dryRun
             issue.body = newBody
             console.log(issue)
@@ -337,7 +337,7 @@ updateLinks = (github, repo, bar) ->
 
             # Push updated body to GitHub
             githubIssue = github.issue(repo, issue.github_issue_number)
-            githubIssue.updateAsync('body': newBody).then () -> bar.tick()
+            githubIssue.updateAsync('body': newBody).then -> bar.tick()
 
 ###
 Create labels in GitHub
@@ -413,7 +413,7 @@ exportToGithub = ->
             console.log('skipping, no data object')
             return
           if argv.dryRun
-              console.log(issue)
+              console.log('issue data', issue)
           else
             repo.issueAsync(
               title: issue.title
@@ -432,10 +432,10 @@ exportToGithub = ->
                   'github_issue_body': issue.body
                 }
               )
-            .then () ->
+            .then ->
               bar.tick()
             .delay(argv.delay)
-    .then () ->
+    .then ->
       # Find and update links to related github issues.
       updateLinks(github, argv.repo.path, bar)
 
