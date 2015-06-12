@@ -2,9 +2,6 @@
 
 A tool to copy Assembla tickets into GitHub.
 
-## Under Development
-This tool is under active development and not yet ready for use.
-
 ## Initial Setup
 - NPM dependencies
   - `npm install`
@@ -15,4 +12,4 @@ This tool is under active development and not yet ready for use.
 
 ## Usage
 - Create a .env config file (see .env-sample)
-- Run `./assembla2github.coffee --help`
+- Run `./assembla2github.coffee --help` for usage and examples.
