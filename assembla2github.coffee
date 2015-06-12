@@ -356,11 +356,14 @@ Create labels in GitHub
   createLabels([{name: 'foo', color: 'ff0000'}, {name: 'bar', color: 'bbaaaa'}])
 ###
 createLabels = (labels) ->
+  throw new TypeError('labels must be an array') if not _.isArray labels
+
   octonode = Promise.promisifyAll(require('octonode'))
   github = octonode.client(argv['github-token'])
   repo = github.repo(argv.repo)
 
   console.log('Creating labels\n%s\n', _.pluck(labels, 'name').join(', '))
+
   Promise.map(
     labels,
     ((label) ->
@@ -442,6 +445,12 @@ exportToGithub = ->
               )
             .then ->
               bar.tick()
+            .catch((e) ->
+              if e.message is 'Validation Failed'
+                console.log(e.body.errors)
+              else
+                throw e
+            )
             .delay(argv.delay)
     .then ->
       # Find and update links to related github issues.
@@ -463,13 +472,14 @@ switch command
     promise = promise.then(exportToGithub)
   when 'labels'
     promise = promise.then(->
-      unless typeof argv.labels is 'string' and labels.length
-        throw new Error('invalid labels option')
-      labels = argv.labels.match(/\S+/g)
-      if labels.length
-        labels = _.map(labels, (label) -> {name: label})
+      if argv.labels
+        if typeof argv.labels is 'string' and argv.labels.length
+          labels = argv.labels.match(/\S+/g)
+          labels = _.map(labels, (label) -> {name: label})
+        else
+          throw new Error('invalid labels option')
       else
-        plugin.labels()
+        labels = plugin.labels()
       createLabels(labels)
     )
 
