@@ -185,9 +185,14 @@ joinValues = (ticket) ->
       if data.length > 0
         return data[0].title
 
+  # Append Plan Level
+  planLevel = db.collection('ticket_attributes')
+    .find({'ticket_id': ticket.id}, {'subtask_importance': 1, 'hierarchy_type': 1, '_id': 0}).toArrayAsync()
+    .get(0)
+
   # Append Custom Fields (e.g. audience, browser, component, deadline, focus)
   tempCustomFields = {}
-  custom_fields = db.collection('workflow_property_vals')
+  customFields = db.collection('workflow_property_vals')
     .find({'workflow_instance_id': ticket.id}, {'workflow_property_def_id': 1, 'value': 1, '_id': 0}).toArrayAsync()
     .map (custom_field) ->
       db.collection('workflow_property_defs').find({'id': custom_field.workflow_property_def_id}, {'title': 1, '_id': 0}).toArrayAsync()
@@ -216,8 +221,9 @@ joinValues = (ticket) ->
       return results
 
   return Promise.props(
+    plan_level: planLevel,
     associations: associations,
-    custom_fields: custom_fields,
+    custom_fields: customFields,
     milestone: milestone,
     status: status,
     tags: tags,
@@ -247,23 +253,25 @@ joinValues = (ticket) ->
     ###
 
     # Mappers
-    estimateMapper = {
-      '0': 'None'
-      '1': 'Small'
-      '3': 'Medium'
-      '7': 'Large'
-    }
-    priorityMapper = {
-      '1': 'Highest'
-      '2': 'High'
-      '3': 'Normal'
-      '4': 'Low'
-      '5': 'Lowest'
-    }
-    stateMapper = {
-      '0': 'Closed'
-      '1': 'Open'
-    }
+    estimateMapper =
+      0: 'none'
+      1: 'small'
+      3: 'medium'
+      7: 'large'
+    priorityMapper =
+      1: 'highest'
+      2: 'high'
+      3: 'normal'
+      4: 'low'
+      5: 'lowest'
+    stateMapper =
+      0: 'closed'
+      1: 'open'
+    planLevelMapper =
+      0: 'none'
+      1: 'subtask'
+      2: 'story'
+      3: 'epic'
 
     # Create Issue
     issue = {
@@ -278,7 +286,7 @@ joinValues = (ticket) ->
       assignee: ticket.assigned_to_id
       component: results.custom_fields.component || false
       milestone: results.milestone || false
-      plan_level: results.custom_fields.plan_level || false
+      plan_level: planLevelMapper[results.plan_level.hierarchy_type] || false
       estimate: estimateMapper[ticket.estimate]
       audience: results.custom_fields.audience || false
       browser: results.custom_fields.browser || false

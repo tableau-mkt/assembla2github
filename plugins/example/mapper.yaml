@@ -11,11 +11,11 @@ status:
   'Fixed for Real':        [stat-fixed, stat-triaged]
 
 priority:
-  Lowest:  [pri-wishlist]
-  Low:     [pri-schmeh]
-  Normal:  [pri-normal]
-  High:    [pri-next]
-  Highest: [pri-NOW]
+  lowest:  [pri-wishlist]
+  low:     [pri-schmeh]
+  normal:  [pri-normal]
+  high:    [pri-next]
+  highest: [pri-NOW]
 
 component:
   "Doesn't Work (bug)":           [task-bug]
@@ -25,9 +25,9 @@ component:
   'Research':                     [task-research]
 
 estimate:
-  Easy: est-easy
-  Medium: est-medium
-  Large: est-large
+  small: est-easy
+  medium: est-medium
+  large: est-large
 
 audience:
   'Leads':              []
