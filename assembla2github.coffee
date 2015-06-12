@@ -138,7 +138,7 @@ getTickets = (state = 0) ->
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
-      .find({number: 3625}).sort({number: -1}).toArrayAsync()
+      .find().sort({number: -1}).toArrayAsync()
 
   return tickets
 
@@ -330,7 +330,7 @@ updateLinks = (github, repo, bar) ->
 
             # Update Github issue number in body
             re = ///\[GitHub:#{assemblaId}\]///g
-            newBody = newBody.replace(re, "##{githubId}")
+            newBody = newBody.replace(re, "##{githubId} -")
         .then ->
           # Remove remaining github link placeholders (probably referring to closed ticket)
           re = /(?:\[GitHub:)(\d+)\] /g
@@ -341,11 +341,12 @@ updateLinks = (github, repo, bar) ->
             console.log(issue)
           else
             # Save updated body in MongoDb
-            db.collection('assembla2github').updateAsync({'_id': issue._id}, {$set: {'github_issue_body': newBody}}, {upsert: false})
+            db.collection('assembla2github').updateAsync({'assembla_ticket_number': issue.assembla_ticket_number}, {$set: {'github_issue_body': newBody}}, {upsert: false})
 
             # Push updated body to GitHub
             githubIssue = github.issue(repo, issue.github_issue_number)
-            githubIssue.updateAsync('body': newBody).then -> bar.tick()
+            githubIssue.updateAsync('body': newBody)
+        .then -> bar.tick() if !argv.dryRun
 
 ###
 Create labels in GitHub
@@ -436,12 +437,12 @@ exportToGithub = ->
             .spread (body, headers) ->
               # Save Assembla Id and Github Id mapping to MongoDb
               githubId = parseInt(body.number)
-              db.collection('assembla2github').insertAsync(
+              db.collection('assembla2github').updateAsync({'assembla_ticket_number': issue.number},
                 {
                   'assembla_ticket_number': issue.number
                   'github_issue_number': githubId
                   'github_issue_body': issue.body
-                }
+                }, {upsert: true}
               )
             .then ->
               bar.tick()
@@ -464,6 +465,9 @@ promise = MongoDB.MongoClient.connectAsync(mongoUrl)
     tickets = db.collection('tickets')
     # Create a unique, sparse index on the number column, if it doesn't exist.
     return tickets.createIndexAsync({number: 1}, {unique: true, sparse: true})
+  .then ->
+    # Create assembla2github collection, if it doesn't exist and add a unique, sparse index on the number column.
+    return db.collection('assembla2github').createIndexAsync({number: 1}, {unique: true, sparse: true})
 
 switch command
   when 'import'
