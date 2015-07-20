@@ -1,6 +1,9 @@
 ---
 url: https://docs.google.com/spreadsheets/d/1xOO07D4XZFb548a_OFARWRVE6nGBFDEfay08_6LO04g/edit#gid=583714957
 
+dummy:
+  task-enhancement: [task-enhancement]
+
 status:
   'New':                   []
   'Prioritized / Triaged': [stat-triaged]
@@ -25,7 +28,7 @@ component:
   'Research':                     [task-research]
 
 estimate:
-  small: est-easy
+  small: est-small
   medium: est-medium
   large: est-large
 
