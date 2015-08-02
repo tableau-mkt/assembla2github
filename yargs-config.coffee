@@ -1,6 +1,6 @@
 module.exports = require('yargs')
   .usage('Usage: $0 <command> [options]')
-  .command('labels', 'create labels in github repo', (yargs) ->
+  .command('createLabels', 'create labels in github repo', (yargs) ->
     yargs
       .describe('repo', 'GitHub repo (user/repo)')
       .demand('repo')
@@ -9,6 +9,8 @@ module.exports = require('yargs')
       .alias('l', 'labels')
       .describe('transform', 'Transform plugin (see readme)')
       .alias('T', 'transform')
+      .describe('github-token', 'GitHub API access token')
+      .alias('t', 'github-token')
       .check((argv) ->
         repoParts = argv.repo.split('/')
         throw new Error('Check GitHub repo value') unless repoParts.length is 2
@@ -17,7 +19,27 @@ module.exports = require('yargs')
         true
       )
       .help('h').alias('h', 'help')
-  )  .command('import', 'import from assembla', (yargs) ->
+  )
+  .command('copyLabels', 'copy labels from a given GitHub repo to other(s)', (yargs) ->
+    yargs
+      .describe('source', 'Source GitHub repo (user/repo)')
+      .demand('x')
+      .alias('x', 'source')
+      .describe('target', 'Target GitHub repo(s) (user/repo). Repositories need to be separated by spaces, quotes around the entire option value.')
+      .demand('y')
+      .alias('y', 'target')
+      .describe('github-token', 'GitHub API access token')
+      .alias('t', 'github-token')
+      .check((argv) ->
+        repoParts = argv.source.split('/')
+        throw new Error('Check source Github repo value') unless repoParts.length is 2
+        throw new Error('Github repo target required') unless argv.target
+        argv['github-token'] ?= process.env.GITHUB_TOKEN
+        true
+      )
+      .help('h').alias('h', 'help')
+  )
+  .command('import', 'import from assembla', (yargs) ->
     yargs
       .describe('file', 'assembla export file')
       .demand('file')
@@ -55,7 +77,8 @@ module.exports = require('yargs')
   .demand(1)
   .example('$0 import -f dump.js')
   .example('$0 export -r user/repo')
-  .example('$0 labels -r user/repo -l "label-one label-two label-three"')
+  .example('$0 createLabels -r user/repo -l "label-one label-two label-three"')
+  .example('$0 copyLabels -s user/repo -d "user/repo1 user/repo2 user/repo3"')
   .describe('verbose', 'Verbose mode')
   .alias('v', 'verbose')
   .count('verbose')

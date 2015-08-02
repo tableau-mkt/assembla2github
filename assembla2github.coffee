@@ -351,17 +351,18 @@ updateLinks = (github, repo, bar) ->
 ###
 Create labels in GitHub
 
+@param String repo the path of the repo (user/repository)
 @param [Array] labels  array of (Object) labels (name required)
 
 @example basic
   createLabels([{name: 'foo', color: 'ff0000'}, {name: 'bar', color: 'bbaaaa'}])
 ###
-createLabels = (labels) ->
+createLabels = (repo, labels) ->
   throw new TypeError('labels must be an array') if not _.isArray labels
 
   octonode = Promise.promisifyAll(require('octonode'))
   github = octonode.client(argv['github-token'])
-  repo = github.repo(argv.repo)
+  repo = github.repo(repo)
 
   console.log('Creating labels\n%s\n', _.pluck(labels, 'name').join(', '))
 
@@ -380,6 +381,38 @@ createLabels = (labels) ->
     ),
     {concurrency: 2}
   )
+
+###
+Copy labels in GitHub
+
+@param String 'from' Repository to copy labels from
+@param [Array] 'to'  Array of (Object) repositories (path required)
+
+@example basic
+  copyLabels('user0/repo0', [{path: 'user/repo', owner: 'user', repo: 'repo'}, {path: 'user1/repo1', owner: 'user1', repo: 'repo1'}])
+###
+copyLabels = (from, to) ->
+  throw new TypeError('destinations must be an array') if not _.isArray to
+
+  octonode = Promise.promisifyAll(require('octonode'))
+  github = octonode.client(argv['github-token'])
+  from = github.repo(from)
+
+  from.labelsAsync()
+  .get(0)
+  .then (labels) ->
+    Promise.map(
+      to,
+      ((destination) ->
+        Promise.try(->
+          console.log('Copying labels from %s to %s', from.name, destination.path)
+          createLabels(destination.path, labels)
+        ).catch((e) ->
+          console.log(e.body.errors)
+        )
+      ),
+      {concurrency: 2}
+    )
 
 ###
 Export data to GitHub
@@ -474,7 +507,9 @@ switch command
     promise = promise.then(purgeData).then(importDumpFile)
   when 'export'
     promise = promise.then(exportToGithub)
-  when 'labels'
+  when 'createLabels'
+    repo = argv.repo
+
     promise = promise.then(->
       if argv.labels
         if typeof argv.labels is 'string' and argv.labels.length
@@ -483,8 +518,26 @@ switch command
         else
           throw new Error('invalid labels option')
       else
-        labels = plugin.labels()
-      createLabels(labels)
+        labels = plugin.createLabels(repo)
+      createLabels(repo, labels)
+    )
+  when 'copyLabels'
+    source = argv.source
+    promise = promise.then(->
+      if argv.target and typeof argv.target is 'string' and argv.target.length
+        target = argv.target.match(/\S+/g)
+        target = _.map(target, (t) ->
+          targetParts = t.split('/')
+
+          return {
+            path: t
+            owner: targetParts[0]
+            repo: targetParts[1]
+          }
+        )
+        copyLabels(source, target)
+      else
+        throw new Error('invalid destination(s) option')
     )
 
 promise.done ->
