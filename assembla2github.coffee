@@ -398,7 +398,7 @@ copyLabels = (from, to) ->
   github = octonode.client(argv['github-token'])
   from = github.repo(from)
 
-  from.labelsAsync()
+  from.labelsAsync({per_page: 100})
   .get(0)
   .then (labels) ->
     Promise.map(
