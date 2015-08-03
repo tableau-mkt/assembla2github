@@ -23,11 +23,11 @@ module.exports = require('yargs')
   .command('copyLabels', 'copy labels from a given GitHub repo to other(s)', (yargs) ->
     yargs
       .describe('source', 'Source GitHub repo (user/repo)')
-      .demand('x')
-      .alias('x', 'source')
+      .demand('s')
+      .alias('s', 'source')
       .describe('target', 'Target GitHub repo(s) (user/repo). Repositories need to be separated by spaces, quotes around the entire option value.')
-      .demand('y')
-      .alias('y', 'target')
+      .demand('d')
+      .alias('d', 'target')
       .describe('github-token', 'GitHub API access token')
       .alias('t', 'github-token')
       .check((argv) ->
