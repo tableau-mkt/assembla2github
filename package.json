@@ -18,7 +18,7 @@
     "js-yaml": "^3.3.1",
     "lodash": "^3.8.0",
     "mongodb": "^2.0.33",
-    "octonode": "^0.6.17",
+    "octonode": "^0.6.18",
     "progress": "^1.1.8",
     "prompt": "^0.2.14",
     "yargs": "^3.10.0"

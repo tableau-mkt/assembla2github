@@ -118,7 +118,7 @@ module.exports.transform = (data) ->
 
   return data
 
-module.exports.labels = ->
+module.exports.createLabels = ->
   _.chain(mapper)
     .reduce((labels, item) ->
       if _.isObject(item)
