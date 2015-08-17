@@ -134,11 +134,11 @@ getTickets = (state = 0) ->
   # Only retrieve tickets with a certain state
   if state == 0 or state == 1
     tickets = db.collection('tickets')
-      .find({'state': state}).sort({number: -1}).toArrayAsync()
+      .find({'state': state}).sort({number: 1}).toArrayAsync()
   else
     # Retrieve all tickets
     tickets = db.collection('tickets')
-      .find().sort({number: -1}).toArrayAsync()
+      .find().sort({number: 1}).toArrayAsync()
 
   return tickets
 
