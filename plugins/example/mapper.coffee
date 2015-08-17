@@ -96,16 +96,16 @@ module.exports.transform = (data) ->
   data.body = data.body.replace(/h6\./g, '######')
 
   # Append Assembla link.
-  data.body += "\n\n## [Assembla ##{data.number}](https://www.assembla.com/spaces/upgrade/tickets/#{data.number})\n"
+  data.body += "\n\n>__&lt;META&gt;__"
+  data.body += "\n>Original Ticket: [Assembla](https://www.assembla.com/spaces/upgrade/tickets/#{data.number})"
 
   # Append related ticket info to body.
   if _.keys(data.relatedTickets).length
-    data.body += '\n\n## Related Tickets\n'
     _.each(data.relatedTickets, (tickets, key) ->
       key = _.capitalize(key)
-      data.body += "\n### #{key}\n" if _.keys(tickets).length
+      data.body += "\n#{key}:" if _.keys(tickets).length
       _.each(tickets, (ticket) ->
-        data.body += "- #{ticket.summary} ([GitHub:#{ticket.number}] [Assembla](#{baseUrl}/#{ticket.number}))\n"
+        data.body += "\n- #{ticket.summary} ([Assembla](#{baseUrl}/#{ticket.number}), [GitHub](#{ticket.number}))"
       )
     )
 

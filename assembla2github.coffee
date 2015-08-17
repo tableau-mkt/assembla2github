@@ -14,7 +14,7 @@ prompt = require ('prompt')
 ProgressBar = require ('progress')
 yargs = require('./yargs-config')
 
-# Getting argv property triggers parsing, so we ensure it comes after calling
+# Getting property triggers parsing, so we ensure it comes after calling
 # yargs methods.
 argv = yargs.argv
 command = argv._[0]
@@ -278,8 +278,8 @@ joinValues = (ticket) ->
       id: ticket.id
       number: ticket.number
       date: ticket.created_on
-      title: ticket.summary
-      body: ticket.description
+      title: ticket.summary || ''
+      body: ticket.description || ''
       state: stateMapper[ticket.state]
       status: results.status || false
       priority: priorityMapper[ticket.priority]
@@ -313,7 +313,7 @@ updateLinks = (github, repo, bar) ->
         newBody = issue.github_issue_body
 
         # Retrieve all Assembla ticket numbers from body and find matching Github issue number
-        re = /(?:\[GitHub:)(\d+)\]/g
+        re = /(?:\[GitHub\]\((\d+)\))/g
         while (matches = re.exec(issue.github_issue_body)) isnt null
           assemblaId = parseInt(matches[1])
           mapping = db.collection('assembla2github')
@@ -329,11 +329,11 @@ updateLinks = (github, repo, bar) ->
             githubId = relatedIssue.github_issue_number
 
             # Update Github issue number in body
-            re = ///\[GitHub:#{assemblaId}\]///g
-            newBody = newBody.replace(re, "##{githubId} -")
+            re = ///\[GitHub\]\(#{assemblaId}\)///g
+            newBody = newBody.replace(re, "[GitHub](##{githubId})")
         .then ->
           # Remove remaining github link placeholders (probably referring to closed ticket)
-          re = /(?:\[GitHub:)(\d+)\] /g
+          re = /(?:\[GitHub\]\((\d+)\))/g
           newBody = newBody.replace(re, "")
         .then ->
           if argv.dryRun
