@@ -61,6 +61,8 @@ module.exports = require('yargs')
       .default('delay', 250)
       .describe('github-token', 'GitHub API access token')
       .alias('t', 'github-token')
+      .describe('comments', 'Append Assembla comments to Github body')
+      .alias('c', 'comments')
       .check((argv) ->
         repoParts = argv.repo.split('/')
         throw new Error('Check GitHub repo value') unless repoParts.length is 2
