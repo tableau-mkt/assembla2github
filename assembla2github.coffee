@@ -467,6 +467,9 @@ exportToGithub = ->
                     issue.body += "\n\n>__&lt;Comments migrated from Assembla&gt;__"
                     flagFirstComment = false
                   newComment = comment.comment
+                  # Replace commit reference '[[r:47|repo:47]]' by 'r47'
+                  re = /\[\[r:(\d+)\|[^\]]*\]\]/g
+                  newComment = newComment.replace(re, "r$1")
                   # Append comment
                   issue.body += "\n\n> By #{comment.user_id} on #{date.toUTCString()}"
                   issue.body += "\n"+newComment
