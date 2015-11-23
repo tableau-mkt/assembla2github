@@ -467,6 +467,9 @@ exportToGithub = ->
                     issue.body += "\n\n>__&lt;Comments migrated from Assembla&gt;__"
                     flagFirstComment = false
                   newComment = comment.comment
+                  # Replace Assembla ticket references 're: #85' to 'AS-85'
+                  re = /#(\d+)/g
+                  newComment = newComment.replace(re, "AS-$1")
                   # Replace commit reference '[[r:47|repo:47]]' by 'r47'
                   re = /\[\[r:(\d+)\|[^\]]*\]\]/g
                   newComment = newComment.replace(re, "r$1")
