@@ -481,7 +481,9 @@ exportToGithub = ->
                   issue.body += "\n"+newComment
                   if argv.verbose
                     console.log('New body:')
-                    console.log(issue.body)
+                    str = JSON.stringify(String(issue.body));
+                    str = str.substring(1, str.length-1);
+                    console.log(str)
           unless _.isObject(issue)
             console.log('skipping, no data object')
             return
