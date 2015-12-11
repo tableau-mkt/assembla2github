@@ -454,6 +454,31 @@ exportToGithub = ->
       joinValues(ticket)
         .then (issue) ->
           issue = plugin.transform(issue) if _.isFunction(plugin.transform)
+          # Append ticket comments to body
+          if argv.comments
+            flagFirstComment = true
+            comments = db.collection('ticket_comments')
+              .find({'ticket_id': issue.id}).sort({id: 1}).toArrayAsync()
+              .each (comment) ->
+                if comment.comment
+                  date = new Date(comment.created_on);
+                  if flagFirstComment
+                    # Append comments header
+                    issue.body += "\n\n>__&lt;Comments migrated from Assembla&gt;__"
+                    flagFirstComment = false
+                  newComment = comment.comment
+                  # Replace Assembla ticket references 're: #85' to 'AS-85'
+                  re = /#(\d+)/g
+                  newComment = newComment.replace(re, "AS-$1")
+                  # Replace commit reference '[[r:47|repo:47]]' by 'r47'
+                  re = /\[\[r:(\d+)\|[^\]]*\]\]/g
+                  newComment = newComment.replace(re, "r$1")
+                  # Add blockquote marker '>' to beginning of each line
+                  re = /([\n\r]{2,})/g
+                  newComment = newComment.replace(re, "$1> ")
+                  # Append comment
+                  issue.body += "\n\n> By #{comment.user_id} on #{date.toUTCString()}"
+                  issue.body += "\n"+newComment
           unless _.isObject(issue)
             console.log('skipping, no data object')
             return
